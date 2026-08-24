@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   X, 
   Store, 
@@ -17,9 +17,24 @@ import {
   Search, 
   Image as ImageIcon,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Zap,
+  Radio,
+  Lock,
+  RefreshCw,
+  Sparkles,
+  ShieldCheck,
+  AlertTriangle
 } from 'lucide-react';
 import { Product, StoreInfo, Language, ProductCategory, Brand } from '../types';
+import { 
+  getRemoteVersionConfig, 
+  saveRemoteVersionConfig, 
+  getInstalledVersion, 
+  setInstalledVersion, 
+  AppVersionConfig,
+  CURRENT_BUILD_VERSION
+} from '../utils/appVersionManager';
 
 interface SellerProfileModalProps {
   isOpen: boolean;
@@ -60,11 +75,21 @@ export const SellerProfileModal: React.FC<SellerProfileModalProps> = ({
   onUpdateProducts
 }) => {
   const isHi = language === 'hi';
-  const [activeTab, setActiveTab] = useState<'products' | 'store'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'store' | 'updates'>('products');
   
   // Store form state
   const [storeForm, setStoreForm] = useState<StoreInfo>({ ...storeInfo });
   const [storeSuccessMsg, setStoreSuccessMsg] = useState<string | null>(null);
+
+  // App Update Version state
+  const [versionConfig, setVersionConfig] = useState<AppVersionConfig>(getRemoteVersionConfig);
+  const [newVersionInput, setNewVersionInput] = useState('1.0.1.beta');
+  const [customNoteHi, setCustomNoteHi] = useState('नया सीसीटीवी कैमरा मॉडल एवं अपडेटेड थोक रेट जोड़े गए हैं');
+  const [versionMsg, setVersionMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    setVersionConfig(getRemoteVersionConfig());
+  }, [isOpen]);
 
   // Products manager state
   const [productSearch, setProductSearch] = useState('');
@@ -207,14 +232,14 @@ export const SellerProfileModal: React.FC<SellerProfileModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base sm:text-lg font-black text-white">
-                  {isHi ? 'दुकानदार / सेलर एडमिन प्रोफाइल' : 'Seller Profile & CCTV Store Manager'}
+                  {isHi ? 'दुकानदार / मुख्य ओनर एडमिन प्रोफाइल' : 'Store Owner Profile & CCTV Catalog Manager'}
                 </h2>
-                <span className="bg-emerald-500/20 text-emerald-300 text-[10px] font-extrabold px-2 py-0.5 rounded border border-emerald-500/30">
-                  Live Control
+                <span className="bg-amber-400/20 text-amber-300 text-[10px] font-extrabold px-2 py-0.5 rounded border border-amber-400/30">
+                  +91 80009 51663 Authorized
                 </span>
               </div>
               <p className="text-xs text-slate-300">
-                {isHi ? 'कैमरा फोटो, नाम, मॉडल, मूल्य और अपना मोबाइल नंबर अपडेट करें' : 'Update camera photos, model names, pricing, & store phone numbers'}
+                {isHi ? 'कैमरा फोटो, नाम, मॉडल, मूल्य और दुकान की प्रोफाइल अपडेट करें' : 'Update camera photos, model names, pricing, & store profile'}
               </p>
             </div>
           </div>
@@ -257,6 +282,21 @@ export const SellerProfileModal: React.FC<SellerProfileModalProps> = ({
           >
             <Phone className="w-4 h-4" />
             <span>{isHi ? 'दुकान व मोबाइल नंबर सेटिंग्स' : 'Store & Contact Details'}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('updates')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer ${
+              activeTab === 'updates'
+                ? 'bg-amber-600 text-white shadow-sm'
+                : 'bg-white text-slate-700 hover:bg-slate-200/80 border border-slate-200'
+            }`}
+          >
+            <Zap className="w-4 h-4 text-amber-400" />
+            <span>{isHi ? '🚀 ऐप अपडेट व वर्ज़न कंट्रोल' : 'App Update & Version Control'}</span>
+            <span className="bg-amber-100 text-amber-950 text-[10px] font-black px-1.5 py-0.5 rounded-full border border-amber-300">
+              v{versionConfig.latestVersion}
+            </span>
           </button>
         </div>
 
@@ -828,6 +868,210 @@ export const SellerProfileModal: React.FC<SellerProfileModalProps> = ({
                 </div>
               </div>
             </form>
+          )}
+
+          {/* TAB 3: APP VERSION & MANDATORY BROADCAST CONTROLS */}
+          {activeTab === 'updates' && (
+            <div className="space-y-6">
+              
+              {/* Alert Notification */}
+              {versionMsg && (
+                <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-800 text-xs sm:text-sm font-bold flex items-center gap-2 shadow-xs animate-in fade-in">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <span>{versionMsg}</span>
+                </div>
+              )}
+
+              {/* Status Header Banner */}
+              <div className="bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 text-white p-5 rounded-3xl border border-slate-800 shadow-lg space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-400/40 text-amber-300 flex items-center justify-center font-black">
+                      <Zap className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="font-black text-sm sm:text-base text-white">
+                        {isHi ? '📢 पटेल सीसीटीवी लाइव ऐप वर्ज़न ब्रॉडकास्ट सिस्टम' : '📢 Live App Version Broadcast Engine'}
+                      </h3>
+                      <p className="text-xs text-slate-300">
+                        {isHi ? 'जब भी आप नया अपडेट जारी करेंगे, पुराने ऐप यूजर को अनिवार्य अपडेट स्क्रीन दिखेगी।' : 'Publish updates to trigger mandatory update screens for all old users.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <div className="bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700 text-right">
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">{isHi ? 'वर्तमान सक्रिय वर्ज़न' : 'Current Active Version'}</p>
+                      <p className="text-sm font-black text-amber-400 font-mono">v{versionConfig.latestVersion}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ACTION 1: RELEASE NEW MANDATORY UPDATE */}
+              <div className="bg-slate-50 border border-slate-200 rounded-3xl p-5 sm:p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-amber-600" />
+                    <span>{isHi ? '१. सभी यूजर के लिए नया ऐप अपडेट जारी करें' : '1. Release New Mandatory Update'}</span>
+                  </h4>
+                  <span className="text-[11px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded-full border border-slate-200">
+                    Mandatory Update
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      {isHi ? 'नया वर्ज़न नंबर (Version):' : 'New Version Number:'}
+                    </label>
+                    <input
+                      type="text"
+                      value={newVersionInput}
+                      onChange={(e) => setNewVersionInput(e.target.value)}
+                      placeholder="e.g. 2.6.0"
+                      className="w-full text-xs sm:text-sm p-2.5 rounded-xl border border-slate-300 font-mono font-bold text-blue-900 bg-white"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      {isHi ? 'अपडेट विवरण / क्या नया है (Update Release Note):' : 'Update Highlights (Hindi / English):'}
+                    </label>
+                    <input
+                      type="text"
+                      value={customNoteHi}
+                      onChange={(e) => setCustomNoteHi(e.target.value)}
+                      placeholder="e.g. नए 4K कैमरे, नए दाम व तेज फोटो लोडिंग"
+                      className="w-full text-xs sm:text-sm p-2.5 rounded-xl border border-slate-300 text-slate-900 bg-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-2 flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-xs text-slate-500">
+                    {isHi ? '⚡ बटन दबाते ही सभी पुराने यूजर्स की स्क्रीन पर अपडेट पॉपअप लॉक हो जाएगा।' : 'Pushes compulsory update dialog to all active client devices.'}
+                  </p>
+                  
+                  <button
+                    onClick={() => {
+                      const newConfig: AppVersionConfig = {
+                        ...versionConfig,
+                        latestVersion: newVersionInput.trim() || '2.5.1',
+                        minRequiredVersion: newVersionInput.trim() || '2.5.1',
+                        forced: true,
+                        isUnderMaintenance: false,
+                        releaseDate: new Date().toISOString().split('T')[0],
+                        releaseNotesHi: [
+                          customNoteHi.trim() || 'नया सीसीटीवी कैमरा मॉडल एवं अपडेटेड थोक रेट जोड़े गए हैं',
+                          'सुपरफास्ट कैमरा फोटो लोडिंग व व्हाट्सएप ऑर्डर सिंक (+91 74830 05197)',
+                          'सुरक्षा सुधार व ऑटोमैटिक कैश रिफ्रेश'
+                        ],
+                        releaseNotes: [
+                          'Updated CCTV Camera Models & Wholesale Rates',
+                          'Fast photo rendering and WhatsApp order link (+91 74830 05197)',
+                          'Performance optimization & security cache purge'
+                        ]
+                      };
+                      saveRemoteVersionConfig(newConfig);
+                      setVersionConfig(newConfig);
+                      setInstalledVersion(newConfig.latestVersion);
+                      setVersionMsg(
+                        isHi 
+                          ? `✅ नया वर्ज़न v${newConfig.latestVersion} सफलतापूर्वक जारी कर दिया गया!` 
+                          : `✅ New Version v${newConfig.latestVersion} released successfully!`
+                      );
+                      setTimeout(() => setVersionMsg(null), 4000);
+                    }}
+                    className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-slate-950 font-black text-xs sm:text-sm rounded-xl shadow-md transition flex items-center gap-2 cursor-pointer"
+                  >
+                    <Zap className="w-4 h-4 text-slate-950" />
+                    <span>{isHi ? '📢 नया अपडेट पब्लिश करें' : 'Publish Mandatory Update'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* ACTION 2: MAINTENANCE / LIVE EDITING LOCK */}
+              <div className="bg-slate-50 border border-slate-200 rounded-3xl p-5 sm:p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                    <Lock className="w-4 h-4 text-rose-600" />
+                    <span>{isHi ? '२. मेंटेनेंस / लाइव अपडेट लॉक (Lock App during Live Edits)' : '2. Maintenance Lock Mode'}</span>
+                  </h4>
+                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${
+                    versionConfig.isUnderMaintenance 
+                      ? 'bg-rose-100 text-rose-800 border-rose-300' 
+                      : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                  }`}>
+                    {versionConfig.isUnderMaintenance ? (isHi ? '🔒 लॉक सक्रिय (Active)' : '🔒 Locked') : (isHi ? '🟢 सामान्य चालू (Live)' : '🟢 Online')}
+                  </span>
+                </div>
+
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  {isHi 
+                    ? 'जब आप नए कैमरे की तस्वीरें अपलोड कर रहे हों या भारी मूल्य संशोधन कर रहे हों, तब इसे ऑन कर दें ताकि ग्राहक अधूरा डेटा न देख सकें।'
+                    : 'Locks the app with an in-progress screen for visitors while you perform catalog edits or heavy stock adjustments.'}
+                </p>
+
+                <div className="flex items-center justify-end pt-2">
+                  <button
+                    onClick={() => {
+                      const updated: AppVersionConfig = {
+                        ...versionConfig,
+                        isUnderMaintenance: !versionConfig.isUnderMaintenance,
+                      };
+                      saveRemoteVersionConfig(updated);
+                      setVersionConfig(updated);
+                      setVersionMsg(
+                        updated.isUnderMaintenance 
+                          ? (isHi ? '🔒 मेंटेनेंस लॉक चालू कर दिया गया है।' : '🔒 Maintenance mode enabled.')
+                          : (isHi ? '🟢 मेंटेनेंस लॉक हटा दिया गया है। ऐप लाइव है।' : '🟢 Maintenance mode disabled. App is live.')
+                      );
+                      setTimeout(() => setVersionMsg(null), 4000);
+                    }}
+                    className={`px-5 py-2.5 font-bold text-xs sm:text-sm rounded-xl shadow-md transition flex items-center gap-2 cursor-pointer ${
+                      versionConfig.isUnderMaintenance 
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white' 
+                        : 'bg-rose-600 hover:bg-rose-700 text-white'
+                    }`}
+                  >
+                    <Lock className="w-4 h-4" />
+                    <span>
+                      {versionConfig.isUnderMaintenance 
+                        ? (isHi ? '🟢 मेंटेनेंस मोड बंद करें (Unlock App)' : '🟢 Turn Off Maintenance')
+                        : (isHi ? '🔒 मेंटेनेंस मोड चालू करें (Lock App)' : '🔒 Turn On Maintenance')}
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {/* ACTION 3: TEST THE OUTDATED CLIENT MODAL */}
+              <div className="bg-amber-50/70 border border-amber-200 rounded-3xl p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <h5 className="text-xs font-black text-amber-950 flex items-center gap-1.5">
+                    <AlertTriangle className="w-4 h-4 text-amber-700" />
+                    <span>{isHi ? 'परीक्षण: पुराना वर्ज़न सिम्युलेटर' : 'Simulation: Test Outdated Client Screen'}</span>
+                  </h5>
+                  <p className="text-[11px] text-amber-900">
+                    {isHi 
+                      ? 'इस बटन को दबाने पर आपकी डिवाइस पर पुराना वर्ज़न v0.9.0.beta सेट होगा और आप ग्राहक को दिखने वाला पॉपअप टेस्ट कर सकेंगे।'
+                      : 'Simulate an older client version (v0.9.0.beta) to test how the update prompt behaves for regular customers.'}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setInstalledVersion('0.9.0.beta');
+                    onClose();
+                    window.location.reload();
+                  }}
+                  className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-xs cursor-pointer"
+                >
+                  {isHi ? '🧪 टेस्ट करें (Trigger Test)' : 'Test Update Prompt'}
+                </button>
+              </div>
+
+            </div>
           )}
 
         </div>

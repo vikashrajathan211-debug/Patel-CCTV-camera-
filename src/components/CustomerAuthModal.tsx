@@ -23,20 +23,21 @@ import {
   Eye,
   Volume2,
   ShoppingCart,
-  Store,
-  Briefcase,
   Check,
-  Tag
+  Tag,
+  Globe
 } from 'lucide-react';
-import { CustomerUser, Language, StoreInfo, CityInfo, AccountType } from '../types';
+import { CustomerUser, Language, StoreInfo, CityInfo } from '../types';
 import { CITIES_DATA, searchCities } from '../data/cities';
 import { speakWelcomeAudio } from '../utils/speech';
 import { CCTVLoader } from './CCTVLoader';
+import { SUPPORTED_LANGUAGES, getAuthT } from '../data/translations';
 
 interface CustomerAuthModalProps {
   isOpen: boolean;
   isMandatoryGate?: boolean; // If true, cannot close without login
   language: Language;
+  onLanguageChange?: (lang: Language) => void;
   storeInfo: StoreInfo;
   currentUser: CustomerUser | null;
   onLoginSuccess: (user: CustomerUser) => void;
@@ -48,17 +49,17 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
   isOpen,
   isMandatoryGate = true,
   language,
+  onLanguageChange,
   storeInfo,
   currentUser,
   onLoginSuccess,
   onContinueAsGuest,
   onClose,
 }) => {
+  const t = getAuthT(language);
   const isHi = language === 'hi';
 
   // Form states
-  const [accountType, setAccountType] = useState<AccountType>(currentUser?.accountType || 'buyer');
-  const [businessName, setBusinessName] = useState<string>(currentUser?.businessName || '');
   const [name, setName] = useState<string>(currentUser?.name || '');
   const [phone, setPhone] = useState<string>(currentUser?.phone || '');
   const [selectedCity, setSelectedCity] = useState<string>(currentUser?.city || 'Morbi');
@@ -74,8 +75,6 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
   // Reset form with currentUser values whenever modal opens or currentUser updates
   useEffect(() => {
     if (currentUser) {
-      setAccountType(currentUser.accountType || 'buyer');
-      setBusinessName(currentUser.businessName || '');
       setName(currentUser.name || '');
       setPhone(currentUser.phone || '');
       setSelectedCity(currentUser.city || 'Morbi');
@@ -89,12 +88,12 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
   // Automatic Location Detection Function (GPS + Reverse Geocoding + PIN Lookup)
   const detectDeviceLocation = async (isManual = true) => {
     if (!navigator.geolocation) {
-      setLocationStatus(isHi ? 'आपके डिवाइस में GPS उपलब्ध नहीं है।' : 'GPS Geolocation not supported on device.');
+      setLocationStatus(t.gpsNotSupported);
       return;
     }
 
     setIsLocating(true);
-    setLocationStatus(isHi ? 'डिवाइस लोकेशन व पिन कोड सर्च किया जा रहा है...' : 'Detecting device GPS location & PIN code...');
+    setLocationStatus(t.detectingGps);
 
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
@@ -157,16 +156,14 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
             }
 
             setLocationStatus(
-              isHi 
-                ? `✓ GPS से सेट: ${detectedCity || selectedCity}, PIN: ${detectedPin || pincode}`
-                : `✓ GPS Detected: ${detectedCity || selectedCity}, PIN: ${detectedPin || pincode}`
+              `✓ GPS: ${detectedCity || selectedCity}, PIN: ${detectedPin || pincode}`
             );
           } else {
-            setLocationStatus(isHi ? 'लोकेशन मिल गई। कृपया पिन कोड चेक करें।' : 'Location matched. Please confirm PIN.');
+            setLocationStatus(t.gpsLocationMatched);
           }
         } catch (err) {
           console.error(err);
-          setLocationStatus(isHi ? 'GPS लोकेशन मिल गई। कृपया सिटी व पिन कोड चेक करें।' : 'GPS captured.');
+          setLocationStatus(t.gpsCaptured);
         } finally {
           setIsLocating(false);
         }
@@ -175,9 +172,9 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
         setIsLocating(false);
         if (isManual) {
           if (err.code === err.PERMISSION_DENIED) {
-            setLocationStatus(isHi ? '⚠️ GPS परमिशन अस्वीकार हुई। मैन्युअली सिटी व पिन चुनें।' : '⚠️ Location permission denied. Please select manually.');
+            setLocationStatus(t.gpsPermissionDenied);
           } else {
-            setLocationStatus(isHi ? '⚠️ GPS सिग्नल नहीं मिला। कृपया सिटी सर्च करें।' : '⚠️ Unable to fetch GPS signal.');
+            setLocationStatus(t.gpsSignalFailed);
           }
         }
       },
@@ -281,22 +278,22 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
     // Validations
     const cleanPhone = phone.replace(/\D/g, '');
     if (cleanPhone.length !== 10) {
-      setFormError(isHi ? 'कृपया 10 अंकों का वैध मोबाइल नंबर दर्ज करें।' : 'Please enter a valid 10-digit mobile number.');
+      setFormError(t.invalidMobileError);
       return;
     }
 
     if (!pincode || pincode.trim().length !== 6 || !/^\d{6}$/.test(pincode.trim())) {
-      setFormError(isHi ? 'कृपया 6 अंकों का सही पिन कोड दर्ज करें (पिन कोड अनिवार्य है)।' : 'Please enter a valid 6-digit PIN code (PIN code is required).');
+      setFormError(t.invalidPinError);
       return;
     }
 
     if (!name.trim()) {
-      setFormError(isHi ? 'कृपया अपना नाम दर्ज करें।' : 'Please enter your full name.');
+      setFormError(t.nameRequiredError);
       return;
     }
 
     if (!selectedCity.trim()) {
-      setFormError(isHi ? 'कृपया अपनी सिटी / शहर चुनें।' : 'Please select your city.');
+      setFormError(t.cityRequiredError);
       return;
     }
 
@@ -381,19 +378,22 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
     const fullEnteredOtp = enteredOtp.join('');
 
     if (fullEnteredOtp.length !== 6) {
-      setOtpError(isHi ? 'कृपया पूरा 6 अंकों का ओटीपी दर्ज करें।' : 'Please enter complete 6-digit OTP.');
+      setOtpError(t.incompleteOtpError);
       return;
     }
 
     if (fullEnteredOtp !== generatedOtp) {
-      setOtpError(isHi ? 'गलत ओटीपी! कृपया सही ओटीपी दर्ज करें या दोबारा भेजें।' : 'Invalid OTP! Please enter correct OTP or click resend.');
+      setOtpError(t.invalidOtpError);
       return;
     }
 
     // Success!
+    const cleanPhone = phone.replace(/\D/g, '');
+    const isMasterMonitor = cleanPhone === '8000951663' || cleanPhone === '918000951663' || cleanPhone.endsWith('8000951663') || cleanPhone === storeInfo.phone.replace(/\D/g, '');
+
     const userData: CustomerUser = {
       name: name.trim(),
-      phone: phone.replace(/\D/g, ''),
+      phone: cleanPhone,
       city: selectedCity,
       state: selectedState,
       pincode: pincode.trim(),
@@ -401,8 +401,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
       landmark: landmark.trim(),
       isLoggedIn: true,
       loggedInAt: new Date().toISOString(),
-      accountType: accountType,
-      businessName: accountType === 'seller' ? businessName.trim() : undefined,
+      accountType: isMasterMonitor ? 'seller' : 'buyer',
     };
 
     onLoginSuccess(userData);
@@ -414,24 +413,52 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto">
       <div className="relative w-full max-w-xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200">
         
+        {/* Top 8-Language Selector Bar */}
+        <div className="bg-slate-900 border-b border-slate-800 px-3.5 py-2.5 flex items-center justify-between gap-2 overflow-x-auto scrollbar-thin">
+          <div className="flex items-center gap-1.5 shrink-0 text-slate-300 text-xs font-bold">
+            <Globe className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+            <span className="text-[11px] text-slate-300 font-semibold hidden xs:inline">Language / भाषा:</span>
+          </div>
+          <div className="flex items-center gap-1 shrink-0 overflow-x-auto py-0.5">
+            {SUPPORTED_LANGUAGES.map((lang) => (
+              <button
+                key={lang.code}
+                type="button"
+                id={`login-lang-btn-${lang.code}`}
+                onClick={() => onLanguageChange && onLanguageChange(lang.code)}
+                className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 shadow-xs ${
+                  language === lang.code
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 scale-105 border border-blue-400'
+                    : 'bg-slate-800/90 hover:bg-slate-700 text-slate-300 border border-slate-700/70 hover:text-white'
+                }`}
+              >
+                <span>{lang.nativeName}</span>
+                <span className={`text-[10px] ${language === lang.code ? 'text-blue-100' : 'text-slate-400'} font-normal`}>
+                  ({lang.shortLabel})
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Header Ribbon */}
-        <div className="bg-gradient-to-r from-blue-900 via-blue-800 to-indigo-900 text-white p-6 sm:p-7 relative overflow-hidden">
+        <div className="bg-gradient-to-r from-blue-900 via-blue-800 to-indigo-900 text-white p-5 sm:p-6 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute -bottom-10 -left-10 w-48 h-48 bg-indigo-500/20 rounded-full blur-2xl pointer-events-none" />
 
           <div className="relative z-10 flex items-start justify-between gap-4">
             <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur border border-white/20 flex items-center justify-center shadow-inner">
+              <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur border border-white/20 flex items-center justify-center shadow-inner shrink-0">
                 <ShieldCheck className="w-7 h-7 text-emerald-400" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs uppercase tracking-wider font-bold text-blue-200 bg-blue-500/30 px-2 py-0.5 rounded-full border border-blue-400/20">
-                    {isHi ? 'सुरक्षित ग्राहक लॉगिन' : 'Verified Customer Login'}
+                    {t.verifiedCustomerLogin}
                   </span>
                   <span className="text-[11px] font-semibold text-emerald-300 flex items-center gap-1">
                     <Sparkles className="w-3 h-3" />
-                    {isHi ? 'ओटीपी सुरक्षा' : 'OTP Protected'}
+                    {t.otpProtected}
                   </span>
                   <button
                     type="button"
@@ -439,20 +466,18 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                       e.preventDefault();
                       speakWelcomeAudio();
                     }}
-                    title={isHi ? 'मधुर आवाज में वेलकम सुनें' : 'Listen welcome voice'}
+                    title={t.voicePreview}
                     className="inline-flex items-center gap-1 bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 text-[10px] px-2 py-0.5 rounded-full border border-amber-400/30 transition cursor-pointer"
                   >
                     <Volume2 className="w-3 h-3" />
-                    <span>{isHi ? 'वॉइस सुनें' : 'Voice Preview'}</span>
+                    <span>{t.voicePreview}</span>
                   </button>
                 </div>
                 <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white mt-1">
-                  {isHi ? storeInfo.nameHi : storeInfo.name}
+                  {language === 'hi' ? storeInfo.nameHi : storeInfo.name}
                 </h2>
                 <p className="text-xs text-blue-100/90 mt-0.5">
-                  {isHi 
-                    ? 'कृपया मोबाइल नंबर, सिटी और पिन कोड दर्ज करके ओटीपी से लॉगिन करें' 
-                    : 'Enter Mobile Number, City & PIN code to verify via instant OTP'}
+                  {t.headerSubtitle}
                 </p>
               </div>
             </div>
@@ -479,14 +504,14 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-black text-emerald-900 uppercase tracking-wide flex items-center gap-1">
-                      <span>📩 {isHi ? 'एसएमएस इनबॉक्स ओटीपी' : 'SMS App OTP'}</span>
+                      <span>📩 {t.smsAppOtpTitle}</span>
                     </span>
                     <span className="text-[10px] bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-full font-bold">
-                      {isHi ? 'एसएमएस भेजा गया' : 'SMS Delivered'}
+                      {t.smsDeliveredTag}
                     </span>
                   </div>
                   <p className="text-xs text-slate-700 mt-1">
-                    {isHi ? 'आपके फोन के SMS ऐप में भेजा गया 6-अंकीय कोड:' : '6-digit verification code sent to your phone SMS:'}{' '}
+                    {t.smsSentText}{' '}
                     <strong className="text-base font-black text-emerald-800 tracking-wider font-mono bg-white px-2 py-0.5 rounded border border-emerald-300 shadow-sm">
                       {generatedOtp}
                     </strong>
@@ -502,7 +527,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                   className="text-xs font-bold bg-slate-800 hover:bg-slate-900 text-white px-3 py-1.5 rounded-xl shadow-sm transition flex items-center gap-1.5"
                 >
                   <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>{isHi ? 'SMS ऐप खोलें' : 'Open SMS'}</span>
+                  <span>{t.smsAppBtn}</span>
                 </button>
 
                 <button
@@ -514,7 +539,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                   className="text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl shadow-sm transition flex items-center gap-1"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
-                  <span>{isHi ? 'ऑटो-फिल' : 'Auto Fill'}</span>
+                  <span>{t.autoFillBtn}</span>
                 </button>
               </div>
             </div>
@@ -547,15 +572,15 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                   </div>
                   <div>
                     <div className="text-xs font-bold text-blue-950 flex items-center gap-1.5">
-                      <span>{isHi ? '📍 ऑटो GPS लोकेशन व पिन कोड' : '📍 Auto GPS PIN & City Detect'}</span>
+                      <span>{t.autoGpsPinTitle}</span>
                       {isLocating && (
                         <span className="text-[10px] bg-blue-200 text-blue-900 px-1.5 py-0.2 rounded font-semibold animate-pulse">
-                          {isHi ? 'कैमरा सर्विलांस सर्च जारी...' : 'CCTV Radar Searching...'}
+                          {t.radarSearching}
                         </span>
                       )}
                     </div>
                     <p className="text-[11px] text-blue-800/90 leading-tight mt-0.5">
-                      {locationStatus || (isHi ? 'डिवाइस लोकेशन से सिटी और पिन कोड ऑटोमैटिक सेट करें' : 'Detect your current city and postal PIN code automatically via GPS')}
+                      {locationStatus || t.autoGpsDesc}
                     </p>
                   </div>
                 </div>
@@ -567,11 +592,11 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                   className="w-full sm:w-auto shrink-0 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-sm transition flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   {isLocating ? (
-                    <CCTVLoader language={language} variant="mini" title={isHi ? 'खोज रहे हैं...' : 'Detecting...'} />
+                    <CCTVLoader language={language} variant="mini" title={t.detectingBtn} />
                   ) : (
                     <>
                       <Navigation className="w-3.5 h-3.5" />
-                      <span>{isHi ? 'GPS से खोजें' : 'Auto Detect GPS'}</span>
+                      <span>{t.autoDetectBtn}</span>
                     </>
                   )}
                 </button>
@@ -581,14 +606,14 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
                   <User className="w-3.5 h-3.5 text-blue-600" />
-                  <span>{isHi ? 'आपका पूरा नाम *' : 'Your Full Name *'}</span>
+                  <span>{t.yourFullName}</span>
                 </label>
                 <input
                   type="text"
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder={isHi ? 'उदा. राहुल शर्मा / पटेल' : 'e.g. Rahul Patel'}
+                  placeholder={t.namePlaceholder}
                   className="w-full text-sm font-medium px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition"
                 />
               </div>
@@ -598,10 +623,10 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                 <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
                     <Phone className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>{isHi ? 'मोबाइल नंबर (SMS ऐप में ओटीपी आएगा) *' : 'Mobile Number (OTP via SMS App) *'}</span>
+                    <span>{t.mobileNumber}</span>
                   </span>
                   <span className="text-[11px] text-slate-500 font-normal">
-                    {isHi ? '10 अंक' : '10 digits'}
+                    {t.digitsBadge}
                   </span>
                 </label>
                 <div className="relative flex">
@@ -625,7 +650,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                 <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
                     <Building2 className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>{isHi ? 'सिटी / शहर चुनें (गुजरात, राजस्थान, मुंबई आदि) *' : 'Select City (Gujarat, Rajasthan, Mumbai etc.) *'}</span>
+                    <span>{t.selectCity}</span>
                   </span>
                   <span className="text-[11px] font-bold text-blue-600">
                     {selectedCity} ({selectedState})
@@ -648,14 +673,14 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                         setCitySearchQuery(e.target.value);
                         setIsCityDropdownOpen(true);
                       }}
-                      placeholder={isHi ? 'सिटी सर्च करें (उदा. Morbi, Rajkot, Ahmedabad, Jaipur...)' : 'Search City (e.g. Morbi, Rajkot, Ahmedabad, Jaipur...)'}
+                      placeholder={t.searchCityPlaceholder}
                       className="w-full text-xs font-semibold pl-9 pr-8 py-2.5 rounded-xl border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition bg-white"
                     />
                     {isCityDropdownOpen && (
                       <button
                         type="button"
                         onClick={() => setIsCityDropdownOpen(false)}
-                        className="absolute right-2.5 text-xs text-slate-400 hover:text-slate-600 font-bold p-1"
+                        className="absolute right-2.5 text-xs text-slate-400 hover:text-slate-600 font-bold p-1 cursor-pointer"
                       >
                         ✕
                       </button>
@@ -666,7 +691,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                   {isCityDropdownOpen && (
                     <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-300 rounded-2xl shadow-xl z-50 max-h-60 overflow-y-auto p-2 divide-y divide-slate-100">
                       <div className="px-2 py-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                        {isHi ? 'उपलब्ध शहर व जिले' : 'Matching Cities & Districts'} ({filteredCities.length})
+                        {t.matchingCities} ({filteredCities.length})
                       </div>
                       {filteredCities.length > 0 ? (
                         filteredCities.map((c) => (
@@ -674,7 +699,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                             key={c.name}
                             type="button"
                             onClick={() => handleSelectCity(c)}
-                            className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition ${
+                            className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition cursor-pointer ${
                               selectedCity === c.name
                                 ? 'bg-blue-50 text-blue-700 font-bold border border-blue-200'
                                 : 'hover:bg-slate-100 text-slate-800'
@@ -694,7 +719,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                         ))
                       ) : (
                         <div className="p-3 text-center text-xs text-slate-500">
-                          {isHi ? 'कोई शहर नहीं मिला। कृपया स्पेलिंग जांचें।' : 'No matching city found.'}
+                          {t.noCityFound}
                         </div>
                       )}
                     </div>
@@ -704,7 +729,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                 {/* Popular Quick-Select City Chips */}
                 <div className="flex items-center gap-1.5 flex-wrap mt-2">
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mr-1">
-                    {isHi ? 'त्वरित चयन:' : 'Quick Select:'}
+                    {t.quickSelect}
                   </span>
                   {[
                     { name: 'Morbi', state: 'Gujarat', pin: '363641' },
@@ -723,7 +748,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                         setSelectedState(qc.state);
                         setPincode(qc.pin);
                       }}
-                      className={`text-[11px] px-2.5 py-1 rounded-lg font-bold transition ${
+                      className={`text-[11px] px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${
                         selectedCity === qc.name
                           ? 'bg-blue-600 text-white shadow-sm'
                           : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
@@ -742,10 +767,10 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                   <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
                     <span className="flex items-center gap-1.5">
                       <Lock className="w-3.5 h-3.5 text-rose-600" />
-                      <span>{isHi ? 'पिन कोड (अनिवार्य) *' : 'PIN Code (Mandatory) *'}</span>
+                      <span>{t.pinCode}</span>
                     </span>
                     <span className="text-[10px] text-rose-600 font-bold bg-rose-50 px-1.5 py-0.2 rounded">
-                      {isHi ? '6 अंक जरूरी' : '6 Digits Req.'}
+                      {t.sixDigitsReq}
                     </span>
                   </label>
                   <input
@@ -758,7 +783,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                     className="w-full text-sm font-mono font-bold tracking-widest px-3.5 py-2.5 rounded-xl border-2 border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition bg-white"
                   />
                   <p className="text-[10px] text-slate-500 mt-0.5">
-                    {isHi ? 'पिन कोड के बिना ऐप एक्सेस नहीं होगा।' : 'PIN code is required to access the app.'}
+                    {t.pinCodeNote}
                   </p>
                 </div>
 
@@ -766,13 +791,13 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
                     <Navigation className="w-3.5 h-3.5 text-slate-500" />
-                    <span>{isHi ? 'इलाका / लैंडमार्क (वैकल्पिक)' : 'Area / Landmark (Optional)'}</span>
+                    <span>{t.areaLandmark}</span>
                   </label>
                   <input
                     type="text"
                     value={landmark}
                     onChange={(e) => setLandmark(e.target.value)}
-                    placeholder={isHi ? 'उदा. नियर बस स्टैंड / जीआईडीसी' : 'e.g. Near Bus Stand / GIDC'}
+                    placeholder={t.areaPlaceholder}
                     className="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition"
                   />
                 </div>
@@ -782,175 +807,47 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
                   <MapPin className="w-3.5 h-3.5 text-slate-500" />
-                  <span>{isHi ? 'दुकान / मकान का पता (Address) *' : 'Delivery / Installation Address *'}</span>
+                  <span>{t.addressLabel}</span>
                 </label>
                 <textarea
                   rows={2}
                   required
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  placeholder={isHi ? 'दुकान/घर का नंबर, स्ट्रीट, मार्केट का नाम...' : 'Shop/House No., Street name, Market area...'}
+                  placeholder={t.addressPlaceholder}
                   className="w-full text-xs font-medium px-3.5 py-2 rounded-xl border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition"
                 />
               </div>
 
-              {/* Account Type Selector: Buyer Account vs Seller Account */}
-              <div className="space-y-2 pt-2 border-t border-slate-200">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                    <Shield className="w-4 h-4 text-blue-600" />
-                    <span>{isHi ? 'खाता प्रकार चुनें (Select Account Type) *' : 'Choose Account Type *'}</span>
-                  </label>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                    accountType === 'buyer' 
-                      ? 'bg-blue-100 text-blue-800' 
-                      : 'bg-amber-100 text-amber-900 border border-amber-300'
-                  }`}>
-                    {accountType === 'buyer' 
-                      ? (isHi ? '🛒 खरीदार (Only Buy)' : '🛒 Buyer Account') 
-                      : (isHi ? '🏪 सेलर (Sell + Buy)' : '🏪 Seller Account')}
-                  </span>
+              {/* Quick Trust Highlights for Customer Login */}
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-around text-[11px] text-slate-600 font-semibold">
+                <div className="flex items-center gap-1 text-emerald-700 font-bold">
+                  <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>{t.freeQuotationTag}</span>
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {/* Option 1: Buyer Account (खरीदने वाला अकाउंट) */}
-                  <button
-                    type="button"
-                    onClick={() => setAccountType('buyer')}
-                    id="select-buyer-account-btn"
-                    className={`relative text-left p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between ${
-                      accountType === 'buyer'
-                        ? 'border-blue-600 bg-blue-50/80 shadow-md ring-2 ring-blue-100'
-                        : 'border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                          accountType === 'buyer' ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600'
-                        }`}>
-                          <ShoppingCart className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <div className="text-xs sm:text-sm font-black text-slate-900 flex items-center gap-1">
-                            <span>{isHi ? '🛒 खरीदार अकाउंट' : '🛒 Buyer Account'}</span>
-                          </div>
-                          <span className="text-[10px] font-bold text-blue-700 block">
-                            {isHi ? '(खरीदने वाला अकाउंट)' : '(Buying Account)'}
-                          </span>
-                        </div>
-                      </div>
-                      {accountType === 'buyer' && (
-                        <span className="w-5 h-5 bg-blue-600 text-white rounded-full flex items-center justify-center shrink-0">
-                          <Check className="w-3 h-3 stroke-[3]" />
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="mt-2.5 pt-2 border-t border-slate-200/60 text-[11px] space-y-1">
-                      <div className="flex items-center gap-1.5 text-emerald-700 font-semibold">
-                        <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                        <span>{isHi ? 'कोई भी सामान खरीद सकते हैं' : 'Can purchase any product'}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-rose-600 font-semibold">
-                        <Lock className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                        <span>{isHi ? 'सामान बेच / लिस्ट नहीं कर सकते' : 'No selling / listing access'}</span>
-                      </div>
-                    </div>
-                  </button>
-
-                  {/* Option 2: Seller Account (बेचने वाला अकाउंट) */}
-                  <button
-                    type="button"
-                    onClick={() => setAccountType('seller')}
-                    id="select-seller-account-btn"
-                    className={`relative text-left p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between ${
-                      accountType === 'seller'
-                        ? 'border-amber-500 bg-amber-50/80 shadow-md ring-2 ring-amber-100'
-                        : 'border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                          accountType === 'seller' ? 'bg-amber-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600'
-                        }`}>
-                          <Store className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <div className="text-xs sm:text-sm font-black text-slate-900 flex items-center gap-1">
-                            <span>{isHi ? '🏪 सेलर अकाउंट' : '🏪 Seller Account'}</span>
-                          </div>
-                          <span className="text-[10px] font-bold text-amber-800 block">
-                            {isHi ? '(बेचने वाला अकाउंट)' : '(Selling + Buying)'}
-                          </span>
-                        </div>
-                      </div>
-                      {accountType === 'seller' && (
-                        <span className="w-5 h-5 bg-amber-600 text-white rounded-full flex items-center justify-center shrink-0">
-                          <Check className="w-3 h-3 stroke-[3]" />
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="mt-2.5 pt-2 border-t border-slate-200/60 text-[11px] space-y-1">
-                      <div className="flex items-center gap-1.5 text-emerald-700 font-semibold">
-                        <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                        <span>{isHi ? 'सामान बेच सकते हैं (Add/Edit Products)' : 'Can sell & manage catalog'}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-blue-700 font-semibold">
-                        <Check className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                        <span>{isHi ? 'सामान खरीद भी सकते हैं (Full Buy Access)' : 'Can also purchase items'}</span>
-                      </div>
-                    </div>
-                  </button>
+                <div className="flex items-center gap-1 text-blue-700 font-bold">
+                  <ShieldCheck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                  <span>100% {t.otpProtected}</span>
                 </div>
-
-                {/* If Seller Account is selected, show optional Shop/Business Name input */}
-                {accountType === 'seller' && (
-                  <div className="p-3 bg-amber-50/90 border border-amber-300 rounded-2xl animate-in fade-in zoom-in-95 space-y-2 mt-2">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-amber-950">
-                      <Briefcase className="w-3.5 h-3.5 text-amber-700" />
-                      <span>{isHi ? 'दुकान / फर्म का नाम (वैकल्पिक):' : 'Shop / Business Name (Optional):'}</span>
-                    </div>
-                    <input
-                      type="text"
-                      value={businessName}
-                      onChange={(e) => setBusinessName(e.target.value)}
-                      placeholder={isHi ? 'उदा. पटेल इलेक्ट्रॉनिक्स / CCTV एजेंसी' : 'e.g. Patel CCTV Agency'}
-                      className="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-amber-300 focus:border-amber-600 focus:ring-2 focus:ring-amber-100 outline-none transition bg-white"
-                    />
-                    <p className="text-[10px] text-amber-900 font-medium">
-                      {isHi 
-                        ? '🌟 सेलर अकाउंट में आप अपनी दुकान के प्रोडक्ट लिस्ट कर सकते हैं और साथ ही थोक दामों पर खरीदारी भी कर सकते हैं।' 
-                        : '🌟 Seller account grants access to manage store inventory and purchase items at wholesale rates.'}
-                    </p>
-                  </div>
-                )}
               </div>
 
               {/* Submit / Proceed to OTP Button */}
               <button
                 type="submit"
+                id="submit-send-otp-btn"
                 className="w-full mt-2 bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 text-white font-bold py-3.5 px-5 rounded-2xl shadow-lg hover:shadow-xl transition flex items-center justify-center gap-2 cursor-pointer"
               >
-                <span>
-                  {isHi 
-                    ? `${accountType === 'seller' ? 'सेलर' : 'खरीदार'} अकाउंट के लिए SMS ओटीपी प्राप्त करें` 
-                    : `Get SMS OTP for ${accountType === 'seller' ? 'Seller' : 'Buyer'} Account`}
-                </span>
+                <span>{t.getSmsOtpBtn}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 
               <div className="p-3 bg-emerald-50/80 border border-emerald-200/80 rounded-2xl text-center space-y-1">
                 <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-emerald-800">
                   <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                  <span>{isHi ? '🔒 1-टाइम लॉगिन सुरक्षा (One-Time Device Sign In)' : '🔒 1-Time Permanent Sign In'}</span>
+                  <span>{t.oneTimeLoginTitle}</span>
                 </div>
                 <p className="text-[11px] text-emerald-700 leading-tight">
-                  {isHi
-                    ? 'एक बार साइन इन करने के बाद ऐप कट करके कभी भी खोलने पर दोबारा लॉगिन नहीं मांगेगा। सिर्फ ऐप डिलीट या डेटा क्लियर करने पर ही दोबारा लॉगिन की जरूरत होगी।'
-                    : 'Once signed in, you stay logged in permanently. Closing and reopening the app will directly open the store without asking for login again.'}
+                  {t.oneTimeLoginDesc}
                 </p>
               </div>
 
@@ -969,15 +866,11 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                   className="w-full py-3 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200/80 border border-slate-300 text-slate-800 font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer shadow-xs"
                 >
                   <Eye className="w-4 h-4 text-slate-700" />
-                  <span>{isHi ? '👤 गेस्ट मोड (सिर्फ सामान देखें - No Buying)' : '👤 Continue as Guest (Browse Only)'}</span>
+                  <span>{t.guestModeBtn}</span>
                 </button>
                 <div className="flex items-center justify-center gap-1 text-[11px] text-amber-700 mt-1.5 font-medium text-center">
                   <Lock className="w-3 h-3 text-amber-600 shrink-0" />
-                  <span>
-                    {isHi
-                      ? 'गेस्ट मोड में कीमतें छिपी रहेंगी। सामान खरीदने व रेट देखने के लिए लॉगिन अनिवार्य है।'
-                      : 'Prices hidden in guest mode. Login required to view rates & purchase items.'}
-                  </span>
+                  <span>{t.guestModeWarning}</span>
                 </div>
               </div>
             </form>
@@ -989,18 +882,16 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                   <KeyRound className="w-7 h-7" />
                 </div>
                 <h3 className="text-lg font-black text-slate-900">
-                  {isHi ? 'ओटीपी सत्यापन (OTP Verification)' : 'Enter 6-Digit OTP'}
+                  {t.otpVerificationTitle}
                 </h3>
                 <p className="text-xs text-slate-600 mt-1 max-w-sm mx-auto">
-                  {isHi 
-                    ? `हमने आपके मोबाइल नंबर +91 ${phone} पर SMS ऐप में 6 अंकों का सत्यापन कोड भेजा है:`
-                    : `We have sent a 6-digit verification code to your SMS App on +91 ${phone}:`}
+                  {`${t.otpSentSubtitle} ${phone}:`}
                 </p>
                 
                 {isWebOtpListening && (
                   <div className="mt-2 inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 rounded-full text-[11px] font-bold animate-pulse">
                     <Radio className="w-3 h-3 text-emerald-600 animate-spin" />
-                    <span>{isHi ? 'SMS ऐप से ऑटो-रीड सक्रिय है...' : 'Listening to incoming SMS on device...'}</span>
+                    <span>{t.autoReadActive}</span>
                   </div>
                 )}
 
@@ -1010,37 +901,24 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setStep('details')}
-                      className="text-blue-600 hover:underline font-bold text-[11px]"
+                      className="text-blue-600 hover:underline font-bold text-[11px] cursor-pointer"
                     >
-                      {isHi ? 'बदलें' : 'Edit'}
+                      {t.editDetailsBtn}
                     </button>
                   </div>
 
-                  <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
-                    accountType === 'seller' 
-                      ? 'bg-amber-100 text-amber-950 border border-amber-300 shadow-xs' 
-                      : 'bg-blue-100 text-blue-950 border border-blue-200 shadow-xs'
-                  }`}>
-                    {accountType === 'seller' ? (
-                      <>
-                        <Store className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                        <span>{isHi ? '🏪 सेलर अकाउंट (Sell + Buy)' : '🏪 Seller Account'}</span>
-                      </>
-                    ) : (
-                      <>
-                        <ShoppingCart className="w-3.5 h-3.5 text-blue-700 shrink-0" />
-                        <span>{isHi ? '🛒 खरीदार अकाउंट (Buy Only)' : '🛒 Buyer Account'}</span>
-                      </>
-                    )}
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-950 border border-blue-200 shadow-xs">
+                    <ShoppingCart className="w-3.5 h-3.5 text-blue-700 shrink-0" />
+                    <span>{t.verifiedBuyerAccount}</span>
                   </div>
 
                   <button
                     type="button"
                     onClick={handleOpenSmsApp}
-                    className="inline-flex items-center gap-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-full text-xs font-bold transition"
+                    className="inline-flex items-center gap-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-full text-xs font-bold transition cursor-pointer"
                   >
-                    <MessageSquare className="w-3 h-3" />
-                    <span>{isHi ? 'SMS ऐप' : 'SMS App'}</span>
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    <span>{t.smsAppBtn}</span>
                   </button>
                 </div>
               </div>
@@ -1055,7 +933,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
               {/* 6 Digit OTP Inputs */}
               <div>
                 <label className="block text-center text-xs font-bold text-slate-700 mb-2">
-                  {isHi ? 'यहाँ 6 अंकों का ओटीपी दर्ज करें' : 'Enter 6-Digit OTP Code'}
+                  {t.enterSixDigitOtp}
                 </label>
                 <div className="flex items-center justify-center gap-2 sm:gap-3">
                   {enteredOtp.map((digit, idx) => (
@@ -1084,23 +962,23 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setStep('details')}
-                  className="text-slate-500 hover:text-slate-800 font-semibold"
+                  className="text-slate-500 hover:text-slate-800 font-semibold cursor-pointer"
                 >
-                  ← {isHi ? 'नंबर / सिटी बदलें' : 'Change Details'}
+                  {t.changeDetailsBack}
                 </button>
 
                 {resendTimer > 0 ? (
                   <span className="text-slate-400 font-medium">
-                    {isHi ? `ओटीपी दोबारा भेजें (${resendTimer}s)` : `Resend OTP in ${resendTimer}s`}
+                    {`${t.resendOtpIn} (${resendTimer}s)`}
                   </span>
                 ) : (
                   <button
                     type="button"
                     onClick={handleResendOtp}
-                    className="text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1"
+                    className="text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1 cursor-pointer"
                   >
                     <RotateCw className="w-3.5 h-3.5" />
-                    <span>{isHi ? 'ओटीपी दोबारा भेजें' : 'Resend OTP'}</span>
+                    <span>{t.resendOtpBtn}</span>
                   </button>
                 )}
               </div>
@@ -1108,11 +986,12 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
               {/* Verify and Open App Button */}
               <button
                 type="submit"
+                id="verify-otp-btn"
                 className="w-full bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-700 text-white font-black py-3.5 px-5 rounded-2xl shadow-lg hover:shadow-xl transition flex items-center justify-center gap-2 cursor-pointer"
               >
                 <CheckCircle2 className="w-5 h-5" />
                 <span className="text-sm">
-                  {isHi ? 'ओटीपी सत्यापित करें और ऐप खोलें' : 'Verify OTP & Open App'}
+                  {t.verifyAndOpenAppBtn}
                 </span>
               </button>
 
@@ -1127,9 +1006,9 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
                       onClose();
                     }
                   }}
-                  className="text-slate-500 hover:text-slate-800 text-xs font-semibold underline"
+                  className="text-slate-500 hover:text-slate-800 text-xs font-semibold underline cursor-pointer"
                 >
-                  {isHi ? 'या गेस्ट मोड में सामान देखें (बिना लॉगिन)' : 'Or continue as guest (view items only)'}
+                  {t.guestModeFallback}
                 </button>
               </div>
             </form>

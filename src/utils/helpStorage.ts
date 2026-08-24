@@ -6,17 +6,17 @@ const ACTIVE_CUSTOMER_TICKET_KEY = 'cctv_active_customer_ticket_id';
 // Official verified Patel CCTV Staff Numbers
 export const OFFICIAL_PHONE_NUMBERS = [
   {
-    number: '7483005197',
-    cleanNumber: '7483005197',
-    name: 'Er. Patel (Store Owner & Chief Engineer)',
-    nameHi: 'इंजी. पटेल (स्टोर ओनर एवं चीफ इंजीनियर)',
+    number: '8000951663',
+    cleanNumber: '8000951663',
+    name: 'Patel (Store Owner & Chief In-charge)',
+    nameHi: 'पटेल (स्टोर ओनर एवं मुख्य संचालक)',
     designation: 'Authorized Store In-charge',
     designationHi: 'अधिकृत स्टोर संचालक',
     role: 'official_owner'
   },
   {
-    number: '7483005198',
-    cleanNumber: '7483005198',
+    number: '8000951664',
+    cleanNumber: '8000951664',
     name: 'Patel CCTV Technical Support Desk',
     nameHi: 'पटेल सीसीटीवी टेक्निकल सपोर्ट डेस्क',
     designation: 'Official Technical Support',

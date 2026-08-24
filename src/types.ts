@@ -9,7 +9,15 @@ export type ProductCategory =
 
 export type Brand = 'CP Plus' | 'Hikvision' | 'Dahua' | 'Western Digital' | 'Seagate' | 'TP-Link / Tapo' | 'Patel Special';
 
-export type Language = 'hi' | 'en';
+export type Language = 
+  | 'en' // English
+  | 'hi' // Hindi (हिन्दी)
+  | 'gu' // Gujarati (ગુજરાતી)
+  | 'mr' // Marathi (मराठी)
+  | 'kn' // Kannada (ಕನ್ನಡ)
+  | 'ta' // Tamil (தமிழ்)
+  | 'te' // Telugu (తెలుగు)
+  | 'ml'; // Malayalam (മലയാളം)
 
 export interface StoreInfo {
   name: string;
@@ -156,6 +164,23 @@ export interface HelpTicket {
   invoiceNumber?: string;
   status: 'open' | 'investigating' | 'resolved' | 'escalated';
   resolutionNotes?: string;
+}
+
+export interface UserOrderItem {
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  brand: string;
+}
+
+export interface UserOrderRecord {
+  orderId: string;
+  date: string;
+  items: UserOrderItem[];
+  totalAmount: number;
+  status: 'placed' | 'confirmed' | 'dispatched' | 'delivered';
+  paymentMethod: string;
 }
 
 

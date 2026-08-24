@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Product, Language, StoreInfo } from '../types';
 import { STORE_INFO } from '../data/products';
+import { getUIT } from '../data/translations';
 
 interface ProductCardProps {
   product: Product;
@@ -34,6 +35,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   onViewDetails,
   onRequestLogin,
 }) => {
+  const t = getUIT(language);
   const isHi = language === 'hi';
   const discountPercent = Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100);
 
@@ -68,18 +70,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         {product.isBestseller && (
           <span className="bg-amber-500 text-slate-950 text-[10px] sm:text-[11px] font-black px-2 py-0.5 rounded-md shadow-xs flex items-center gap-1">
             <Sparkles className="w-3 h-3 text-slate-950" />
-            {isHi ? 'बेस्टसेलर' : 'Top Deal'}
+            {t.bestseller}
           </span>
         )}
         {!isGuestMode && discountPercent > 0 && (
           <span className="bg-rose-600 text-white text-[10px] sm:text-[11px] font-black px-2 py-0.5 rounded-md shadow-xs">
-            {discountPercent}% {isHi ? 'छूट' : 'OFF'}
+            {discountPercent}% {t.offDiscount}
           </span>
         )}
         {isGuestMode && (
           <span className="bg-slate-800/90 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs flex items-center gap-1">
             <Eye className="w-3 h-3" />
-            {isHi ? 'सिर्फ देखें' : 'View Only'}
+            {t.viewOnly}
           </span>
         )}
       </div>
@@ -113,7 +115,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
             {/* Clear "CCTV CAMERA" Label */}
             <span className="text-xs sm:text-sm font-black tracking-wider text-white uppercase drop-shadow-xs">
-              {isHi ? 'सीसीटीवी कैमरा' : 'CCTV CAMERA'}
+              {t.catCctv}
             </span>
             <span className="text-[10px] text-slate-300 font-mono mt-0.5 max-w-[90%] truncate">
               {product.brand} • {product.model}
@@ -125,7 +127,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
           <span className="bg-white text-slate-900 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5">
             <Eye className="w-3.5 h-3.5 text-blue-600" />
-            {isHi ? 'विवरण देखें' : 'View Specs'}
+            {t.viewDetails}
           </span>
         </div>
 
@@ -142,7 +144,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         )}
         {product.channels && (
           <div className="absolute bottom-2 left-2 bg-indigo-600 text-white text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded shadow-sm">
-            {product.channels} {isHi ? 'चैनल' : 'CH'}
+            {product.channels} CH
           </div>
         )}
       </div>
@@ -193,10 +195,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         >
           <span className="flex items-center gap-1 text-blue-200 truncate">
             <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-500 animate-pulse shrink-0" />
-            <span className="truncate">{isHi ? '1. कैमरा डेमो & बंडल' : '1. CCTV Demo'}</span>
+            <span className="truncate">CCTV Demo & Bundle</span>
           </span>
           <span className="text-amber-300 font-mono text-[9px] sm:text-[10px] group-hover/btn:translate-x-0.5 transition-transform flex items-center gap-0.5 shrink-0 ml-1">
-            <span>{isHi ? 'फिटिंग व SD' : '+Fit & SD'}</span>
+            <span>+Fit & SD</span>
             <ArrowRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0" />
           </span>
         </button>
@@ -214,10 +216,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             <div className="flex items-center justify-between gap-1 bg-amber-50/90 p-2 rounded-xl border border-amber-200">
               <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
                 <Lock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                <span>{isHi ? '🔒 कीमत देखने हेतु लॉगिन करें' : '🔒 Login to View Price'}</span>
+                <span>🔒 {t.viewOnly}</span>
               </div>
               <span className="text-[10px] font-semibold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
-                {isHi ? 'गेस्ट' : 'Guest'}
+                Guest
               </span>
             </div>
           ) : (
@@ -234,7 +236,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 )}
               </div>
               <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                {isHi ? 'GST सहित' : 'Incl. GST'}
+                {t.gstIncluded}
               </span>
             </div>
           )}
@@ -248,7 +250,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               className="w-full flex items-center justify-center gap-1.5 bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 text-white font-bold text-xs py-2.5 px-3 rounded-xl transition shadow-md shadow-blue-700/20 cursor-pointer"
             >
               <Lock className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-              <span className="truncate">{isHi ? 'लॉगिन करें (सामान खरीदने हेतु)' : 'Login with Phone to Buy'}</span>
+              <span className="truncate">{t.orderOnWhatsApp}</span>
             </button>
           ) : (
             /* LOGGED IN: Allow adding to cart and WhatsApp ordering */
@@ -259,7 +261,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 className="flex items-center justify-center gap-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[11px] sm:text-xs py-2 px-1.5 sm:px-2 rounded-xl transition border border-blue-200 cursor-pointer"
               >
                 <ShoppingCart className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">{isHi ? '+ कार्ट' : '+ Cart'}</span>
+                <span className="truncate">{t.addToCartBtn}</span>
               </button>
 
               <button
@@ -267,7 +269,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 id={`whatsapp-order-${product.id}`}
                 className="flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] sm:text-xs py-2 px-1.5 sm:px-2 rounded-xl transition shadow-xs shadow-emerald-700/20 cursor-pointer"
               >
-                <span className="truncate">{isHi ? 'ऑर्डर' : 'WhatsApp'}</span>
+                <span className="truncate">{t.orderOnWhatsApp.split(' ')[0]}</span>
                 <ArrowRight className="w-3 h-3 shrink-0" />
               </button>
             </div>
@@ -277,3 +279,4 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     </div>
   );
 };
+

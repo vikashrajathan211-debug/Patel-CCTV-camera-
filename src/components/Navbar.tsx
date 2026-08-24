@@ -17,11 +17,13 @@ import {
   VolumeX,
   Lock,
   Eye,
-  ShieldAlert
+  ShieldAlert,
+  Globe
 } from 'lucide-react';
 import { Language, CartItem, StoreInfo, CustomerUser, HelpCategory } from '../types';
 import { subscribeSpeechState, isSpeakingAudio, stopWelcomeAudio } from '../utils/speech';
 import { getPendingSurveyCount } from '../utils/surveyStorage';
+import { SUPPORTED_LANGUAGES, getUIT } from '../data/translations';
 
 interface NavbarProps {
   language: Language;
@@ -32,7 +34,6 @@ interface NavbarProps {
   isGuestMode?: boolean;
   onOpenCustomerAuth: () => void;
   onLogoutCustomer: () => void;
-  onSwitchAccountType?: (type: 'buyer' | 'seller') => void;
   onPlayGreeting?: () => void;
   onOpenCart: () => void;
   onOpenEstimator: () => void;
@@ -55,7 +56,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   isGuestMode = false,
   onOpenCustomerAuth,
   onLogoutCustomer,
-  onSwitchAccountType,
   onPlayGreeting,
   onOpenCart,
   onOpenEstimator,
@@ -68,11 +68,14 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenSecurityWarning,
   onReplaySplash,
 }) => {
+  const t = getUIT(language);
   const totalCartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const isHi = language === 'hi';
+  const isNonEn = language !== 'en';
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
   const [isPlayingVoice, setIsPlayingVoice] = useState(false);
-  const [speakingLanguage, setSpeakingLanguage] = useState<'hi' | 'en' | null>(null);
+  const [speakingLanguage, setSpeakingLanguage] = useState<Language | null>(null);
   const [pendingSurveyCount, setPendingSurveyCount] = useState(0);
 
   useEffect(() => {
@@ -138,8 +141,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                 }}
                 title={
                   isPlayingVoice 
-                    ? (isHi ? 'ऑडियो बंद करें' : 'Stop voice audio') 
-                    : (isHi ? 'मधुर आवाज में सुनें: हिंदी फिर इंग्लिश' : 'Listen sweet female voice greeting: Hindi then English')
+                    ? (isNonEn ? 'ઓડિયો બંધ કરો / ऑडियो बंद करें' : 'Stop voice audio') 
+                    : t.voiceGreetingBtn
                 }
                 className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-semibold text-[11px] border transition cursor-pointer ${
                   isPlayingVoice
@@ -151,16 +154,16 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <>
                     <Volume2 className="w-3.5 h-3.5 text-slate-950 animate-bounce" />
                     <span className="font-bold">
-                      {speakingLanguage === 'hi' ? 'बोल रही है: हिंदी...' : 'Speaking: English...'}
+                      {t.voiceSpeaking}
                     </span>
                   </>
                 ) : (
                   <>
                     <Volume2 className="w-3.5 h-3.5 text-amber-300" />
                     <span className="hidden sm:inline">
-                      {isHi ? 'मधुर वॉइस वेलकम' : 'Sweet Voice Greeting'}
+                      {t.voiceGreetingBtn}
                     </span>
-                    <span className="sm:hidden">वॉइस</span>
+                    <span className="sm:hidden">{t.voiceGreetingBtn.split(' ')[0]}</span>
                   </>
                 )}
               </button>
@@ -168,7 +171,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             <span className="hidden md:flex items-center gap-1 text-slate-300 font-medium">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              {isHi ? 'अधिकृत CCTV डीलर' : 'Authorized CCTV Dealer'}
+              {t.authorizedDealer}
             </span>
           </div>
 
@@ -184,11 +187,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <span className="max-w-[90px] truncate">{currentUser.name || currentUser.phone}</span>
                   {currentUser.accountType === 'seller' ? (
                     <span className="bg-amber-400/30 text-amber-300 border border-amber-400/40 text-[9px] px-1 py-0.2 rounded font-black">
-                      🏪 सेलर
+                      👑 मॉनिटर
                     </span>
                   ) : (
                     <span className="bg-blue-500/30 text-blue-300 border border-blue-400/30 text-[9px] px-1 py-0.2 rounded font-black">
-                      🛒 खरीदार
+                      🛒 ग्राहक
                     </span>
                   )}
                   <ChevronDown className="w-2.5 h-2.5 text-slate-400" />
@@ -204,7 +207,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                             ? 'bg-amber-100 text-amber-900 border border-amber-300'
                             : 'bg-blue-100 text-blue-900 border border-blue-200'
                         }`}>
-                          {currentUser.accountType === 'seller' ? '🏪 सेलर अकाउंट' : '🛒 खरीदार अकाउंट'}
+                          {currentUser.accountType === 'seller' ? '👑 मुख्य मॉनिटर' : '🛒 अधिकृत ग्राहक'}
                         </span>
                       </div>
                       <div className="text-[11px] text-slate-500 font-mono mt-0.5">+91 {currentUser.phone}</div>
@@ -228,54 +231,24 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <div className="space-y-0.5">
                           <div className="font-bold flex items-center gap-1 text-amber-900">
                             <Store className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                            <span>विक्रेता व खरीदार अधिकार:</span>
+                            <span>मुख्य स्टोर मॉनिटर व एडमिन:</span>
                           </div>
                           <p className="text-[10px] text-amber-800">
-                            {isHi ? '✓ प्रोडक्ट जोड़ें/बेचें + ✓ सभी सामान खरीदें' : '✓ Full Sell + Buy Permissions'}
+                            {isHi ? '✓ प्रोडक्ट जोड़ें/संपादित करें + ✓ कैटलॉग मैनेजमेंट' : '✓ Full Inventory & Product Management'}
                           </p>
                         </div>
                       ) : (
                         <div className="space-y-0.5">
                           <div className="font-bold flex items-center gap-1 text-blue-900">
                             <ShoppingCart className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                            <span>खरीदार खाता:</span>
+                            <span>अधिकृत ग्राहक (खरीदार खाता):</span>
                           </div>
                           <p className="text-[10px] text-blue-800">
-                            {isHi ? '✓ सभी सामान खरीद सकते हैं (सामान बेचने की अनुमति नहीं)' : '✓ Can buy any product (Selling locked)'}
+                            {isHi ? '✓ सभी कैमरे थोक रेट पर खरीदें + फ्री कोटेशन' : '✓ Wholesale purchasing & Free quotations active'}
                           </p>
                         </div>
                       )}
                     </div>
-
-                    {/* Switch Account Type Action Button */}
-                    {onSwitchAccountType && (
-                      <button
-                        onClick={() => {
-                          setIsUserMenuOpen(false);
-                          const targetType = currentUser.accountType === 'seller' ? 'buyer' : 'seller';
-                          onSwitchAccountType(targetType);
-                        }}
-                        className={`w-full text-left text-xs font-bold py-2 px-2.5 rounded-xl border flex items-center justify-between transition cursor-pointer ${
-                          currentUser.accountType === 'seller'
-                            ? 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
-                            : 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white border-amber-600 shadow-sm'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          {currentUser.accountType === 'seller' ? (
-                            <ShoppingCart className="w-3.5 h-3.5 text-blue-600" />
-                          ) : (
-                            <Store className="w-3.5 h-3.5 text-white" />
-                          )}
-                          <span>
-                            {currentUser.accountType === 'seller'
-                              ? (isHi ? '🛒 खरीदार मोड में बदलें' : 'Switch to Buyer Account')
-                              : (isHi ? '🏪 सेलर अकाउंट में अपग्रेड करें' : 'Upgrade to Seller Account')}
-                          </span>
-                        </div>
-                        <ChevronDown className="w-3 h-3 -rotate-90" />
-                      </button>
-                    )}
 
                     <div className="pt-1 border-t border-slate-100 space-y-1">
                       <button
@@ -310,10 +283,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onClick={onOpenAdminApprovals}
                 id="top-admin-survey-approvals-btn"
                 className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 hover:text-white px-2.5 py-0.5 rounded-full font-bold text-[11px] flex items-center gap-1.5 border border-emerald-400/40 transition cursor-pointer"
-                title={isHi ? 'सर्वे रिक्वेस्ट अप्रूव करें व ग्राहक को नोटिफिकेशन भेजें' : 'Approve Survey Requests & Notify Customer'}
+                title={isNonEn ? 'સર્વે અપ્રૂવલ / सर्वे अप्रूवल' : 'Approve Survey Requests & Notify Customer'}
               >
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                <span>{isHi ? 'सर्वे अप्रूवल' : 'Approvals'}</span>
+                <span>{t.approvals}</span>
                 {pendingSurveyCount > 0 && (
                   <span className="bg-amber-400 text-slate-950 font-black text-[10px] px-1.5 py-0.2 rounded-full animate-pulse">
                     {pendingSurveyCount}
@@ -330,7 +303,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 className="hidden sm:inline-flex bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-200 hover:text-white px-2.5 py-0.5 rounded-full font-semibold text-[11px] items-center gap-1 border border-indigo-400/30 transition cursor-pointer"
               >
                 <Clock className="w-3 h-3 text-indigo-300" />
-                <span>{isHi ? 'ट्रैक सर्वे' : 'Track Survey'}</span>
+                <span>{t.trackSurvey}</span>
               </button>
             )}
 
@@ -340,10 +313,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onClick={onOpenSecurityWarning}
                 id="top-security-warning-btn"
                 className="bg-red-500/25 hover:bg-red-500/40 text-red-200 hover:text-white px-2.5 py-0.5 rounded-full font-black text-[11px] flex items-center gap-1 border border-red-400/50 transition cursor-pointer shadow-sm animate-pulse"
-                title={isHi ? 'सावधानी नोट व सुरक्षा निर्देश' : 'Security Warning & Caution Notice'}
+                title={t.cautionNotice}
               >
                 <ShieldAlert className="w-3 h-3 text-red-400" />
-                <span>{isHi ? '⚠️ सावधानी नोट' : '⚠️ Warning Notice'}</span>
+                <span>{t.cautionNotice}</span>
               </button>
             )}
 
@@ -353,10 +326,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onClick={() => onOpenHelpSupport('fraud_alert')}
                 id="top-help-support-btn"
                 className="bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 hover:text-white px-2.5 py-0.5 rounded-full font-bold text-[11px] flex items-center gap-1 border border-rose-400/40 transition cursor-pointer animate-pulse-subtle"
-                title={isHi ? 'हेल्प, वारंटी व फ्रॉड अलर्ट पोर्टल' : 'Help & Fraud Alert Portal'}
+                title={t.helpFraudPortal}
               >
                 <ShieldAlert className="w-3 h-3 text-rose-400" />
-                <span>{isHi ? 'हेल्प व फ्रॉड' : 'Help & Fraud'}</span>
+                <span>{t.helpFraudPortal}</span>
               </button>
             )}
 
@@ -369,14 +342,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                   ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-sm font-black'
                   : 'bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 hover:text-amber-200 border-amber-400/40'
               }`}
-              title={
-                currentUser?.accountType === 'buyer'
-                  ? (isHi ? 'दुकानदार डैशबोर्ड (सिर्फ सेलर के लिए)' : 'Seller Dashboard (Seller Account Only)')
-                  : (isHi ? 'दुकानदार डैशबोर्ड - प्रोडक्ट जोड़ें व एडिट करें' : 'Seller Dashboard - Add & Edit Products')
-              }
+              title={t.sellerPanel}
             >
               <Store className="w-3 h-3" />
-              <span>{isHi ? 'दुकानदार डैशबोर्ड' : 'Seller Panel'}</span>
+              <span>{t.sellerPanel}</span>
               {currentUser?.accountType === 'buyer' && (
                 <span className="text-[9px] bg-slate-800/80 text-amber-300 px-1 rounded font-normal">
                   🔒
@@ -386,23 +355,52 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             <span className="text-slate-600">|</span>
 
-            <div className="flex items-center bg-slate-800/80 rounded-full p-0.5 border border-slate-700">
+            {/* 8-Language Selector Dropdown */}
+            <div className="relative">
               <button
-                onClick={() => onLanguageChange('hi')}
-                className={`px-2 py-0.5 rounded-full text-xs font-semibold transition-all ${
-                  isHi ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
-                }`}
+                onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
+                id="top-language-menu-btn"
+                className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-0.5 rounded-full font-bold text-[11px] flex items-center gap-1.5 border border-slate-700 transition cursor-pointer"
+                title="Change language / भाषा बदलें"
               >
-                हिंदी
+                <Globe className="w-3 h-3 text-blue-400" />
+                <span>
+                  {SUPPORTED_LANGUAGES.find(l => l.code === language)?.nativeName || 'हिन्दी'}
+                </span>
+                <ChevronDown className="w-2.5 h-2.5 text-slate-400" />
               </button>
-              <button
-                onClick={() => onLanguageChange('en')}
-                className={`px-2 py-0.5 rounded-full text-xs font-semibold transition-all ${
-                  !isHi ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                ENG
-              </button>
+
+              {isLangMenuOpen && (
+                <div className="absolute right-0 top-full mt-1.5 bg-white text-slate-900 border border-slate-200 rounded-2xl shadow-2xl p-2 min-w-[200px] z-50 animate-in fade-in zoom-in-95 grid grid-cols-1 gap-1">
+                  <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 flex items-center gap-1">
+                    <Globe className="w-3 h-3 text-blue-500" />
+                    <span>भाषा चुनें / Select Language</span>
+                  </div>
+                  {SUPPORTED_LANGUAGES.map((lang) => (
+                    <button
+                      key={lang.code}
+                      type="button"
+                      onClick={() => {
+                        onLanguageChange(lang.code);
+                        setIsLangMenuOpen(false);
+                      }}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center justify-between transition cursor-pointer ${
+                        language === lang.code
+                          ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                          : 'hover:bg-slate-100 text-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>{lang.nativeName}</span>
+                        <span className="text-[11px] text-slate-400 font-normal">({lang.name})</span>
+                      </div>
+                      {language === lang.code && (
+                        <span className="text-xs text-blue-600 font-bold">✓</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -424,14 +422,17 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-base sm:text-xl md:text-2xl font-black tracking-tight text-white flex items-center gap-1.5 truncate max-w-[200px] sm:max-w-none group-hover:text-blue-200 transition-colors">
-                <span>{isHi ? storeInfo.nameHi : storeInfo.name}</span>
+                <span>{t.storeName}</span>
               </h1>
               <span className="hidden md:inline-block bg-blue-500/20 text-blue-300 text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded border border-blue-500/30">
-                Wholesale
+                {t.wholesaleTag}
+              </span>
+              <span className="bg-amber-400/20 text-amber-300 text-[10px] font-black tracking-wider px-2 py-0.5 rounded border border-amber-400/30 font-mono">
+                v1.0.0.beta
               </span>
             </div>
             <p className="text-[11px] sm:text-xs text-slate-400 font-medium line-clamp-1">
-              {isHi ? storeInfo.taglineHi : storeInfo.tagline}
+              {t.storeTagline}
             </p>
           </div>
         </div>
@@ -445,7 +446,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="hidden md:flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs sm:text-sm font-bold px-3 py-2 rounded-xl shadow-md hover:shadow-blue-500/25 transition-all border border-blue-400/30 cursor-pointer"
           >
             <Sliders className="w-4 h-4 text-amber-300" />
-            <span>{isHi ? 'कोटेशन' : 'Estimator'}</span>
+            <span>{t.estimatorTitle}</span>
           </button>
 
           {/* Storage Recording Calculator Button */}
@@ -455,7 +456,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="hidden lg:flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs sm:text-sm font-semibold px-3 py-2 rounded-xl border border-slate-700 transition cursor-pointer"
           >
             <Calculator className="w-4 h-4 text-emerald-400" />
-            <span>{isHi ? 'HDD डेज' : 'HDD Calc'}</span>
+            <span>{t.hddCalc}</span>
           </button>
 
           {/* Direct Phone Call */}
@@ -472,10 +473,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             onClick={onOpenSellerProfile}
             id="nav-seller-profile-btn"
             className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 text-xs sm:text-sm font-black px-2.5 sm:px-3.5 py-2 rounded-xl shadow-md shadow-amber-500/20 border border-amber-300/40 transition cursor-pointer"
-            title={isHi ? 'दुकानदार प्रोफाइल (कैमरा फोटो, नाम, मॉडल, मूल्य व मोबाइल बदलें)' : 'Seller Admin Profile (Update photos, price, phone)'}
+            title={t.sellerPanel}
           >
             <Store className="w-4 h-4 text-slate-950" />
-            <span className="hidden xs:inline sm:inline">{isHi ? 'दुकानदार' : 'Seller'}</span>
+            <span className="hidden xs:inline sm:inline">{t.sellerPanel}</span>
           </button>
 
           {/* Cart / Quotation Drawer Button */}
@@ -485,7 +486,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="relative flex items-center gap-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs sm:text-sm font-bold px-3 sm:px-3.5 py-2 rounded-xl shadow-lg shadow-emerald-700/30 transition cursor-pointer"
           >
             <ShoppingCart className="w-4 h-4" />
-            <span className="hidden sm:inline">{isHi ? 'कार्ट' : 'Cart'}</span>
+            <span className="hidden sm:inline">{t.cart}</span>
             {totalCartCount > 0 && (
               <span className="bg-amber-400 text-slate-900 font-black text-xs w-5 h-5 rounded-full flex items-center justify-center shadow">
                 {totalCartCount}

@@ -178,12 +178,18 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
           </div>
         </div>
 
-        {/* Live Loading Text */}
+        {/* Live Loading Text & Version */}
         <div
-          className="mt-3 text-[11px] font-mono text-cyan-300/80 tracking-widest transition-opacity duration-1000 animate-pulse"
+          className="mt-3 flex flex-col items-center gap-1 transition-opacity duration-1000"
           style={{ opacity: stage === 'animating' ? 1 : 0 }}
         >
-          ● INITIALIZING PATEL CCTV FEEDS & DVR...
+          <div className="text-[11px] font-mono text-cyan-300/80 tracking-widest animate-pulse">
+            ● INITIALIZING PATEL CCTV FEEDS & DVR...
+          </div>
+          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-900/90 border border-cyan-500/30 text-[10px] font-mono text-amber-300 font-bold tracking-wider">
+            <span>APP VERSION: 1.0.0.BETA</span>
+            <span className="text-cyan-400">• BETA RELEASE</span>
+          </div>
         </div>
       </div>
 

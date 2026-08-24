@@ -7,19 +7,19 @@ import {
   CheckCircle2,
   Volume2,
   VolumeX,
-  RotateCw,
   Copy,
   Check,
-  ShieldCheck,
-  Building2,
-  Lock,
   ArrowRight,
-  ExternalLink,
-  Flame,
-  Radio
+  Radio,
+  Languages,
+  Sparkles
 } from 'lucide-react';
 import { Language, StoreInfo, CustomerUser } from '../types';
-import { speakLoginSecurityWarningAudio, stopWelcomeAudio } from '../utils/speech';
+import {
+  speakLoginSecurityWarningAudio,
+  stopWelcomeAudio,
+  SECURITY_WARNING_TEXTS,
+} from '../utils/speech';
 import { CCTVLoader } from './CCTVLoader';
 
 interface LoginSecurityWarningOverlayProps {
@@ -30,6 +30,22 @@ interface LoginSecurityWarningOverlayProps {
   onClose: () => void;
 }
 
+interface LanguageOption {
+  code: Language;
+  label: string;
+  nativeLabel: string;
+  flag: string;
+}
+
+const LANGUAGE_OPTIONS: LanguageOption[] = [
+  { code: 'hi', label: 'Hindi', nativeLabel: 'हिन्दी', flag: '🇮🇳' },
+  { code: 'en', label: 'English', nativeLabel: 'English', flag: '🇬🇧' },
+  { code: 'gu', label: 'Gujarati', nativeLabel: 'ગુજરાતી', flag: '🇮🇳' },
+  { code: 'mr', label: 'Marathi', nativeLabel: 'मराठी', flag: '🇮🇳' },
+  { code: 'kn', label: 'Kannada', nativeLabel: 'ಕನ್ನಡ', flag: '🇮🇳' },
+  { code: 'ta', label: 'Tamil', nativeLabel: 'தமிழ்', flag: '🇮🇳' },
+];
+
 export const LoginSecurityWarningOverlay: React.FC<LoginSecurityWarningOverlayProps> = ({
   isOpen,
   language,
@@ -37,24 +53,44 @@ export const LoginSecurityWarningOverlay: React.FC<LoginSecurityWarningOverlayPr
   user,
   onClose,
 }) => {
-  const isHi = language === 'hi';
+  // Current active language for audio and text
+  const [selectedLang, setSelectedLang] = useState<Language>(language || 'hi');
 
-  // Phases: 'white_screen' (initial pure white screen) -> 'warning_header' -> 'typing_text' -> 'complete'
+  // Phases: 'white_screen' (initial scanning loader) -> 'warning_header' -> 'typing_text' -> 'complete'
   const [phase, setPhase] = useState<'white_screen' | 'warning_header' | 'typing_text' | 'complete'>('white_screen');
   const [displayedText, setDisplayedText] = useState<string>('');
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
   const [copiedNumber, setCopiedNumber] = useState<string | null>(null);
-  const [autoCloseTimer, setAutoCloseTimer] = useState<number | null>(null);
-
-  const fullWarningHindi = 
-    "savdhaanly note: कोई भी हमारे नाम का मिसयूज कर सकता है तो कृपया नंबरों की जांच करके ही किसी का फोन या व्हाट्सएप पर मैसेज आए तो कुछ भी नंबरों की जांच करें उसके बाद ही उसके ऊपर भरोसा करें।\n\n" +
-    "अगर यह नीचे दिया गया हुआ नंबर +91 74830 05197 के अलावा कोई दूसरा नंबर से आपको मैसेज करे तो उससे पहले कंफर्म कर लीजिएगा कि कोई फ्रॉड तो नहीं है।\n\n" +
-    "और अगर आपके साथ फ्रॉड हो तो नजदीकी पुलिस स्टेशन में रिपोर्ट दर्ज करें या फिर इस नंबर पर कॉल करें: +91 80009 51663।\n\n" +
-    "आपका धन्यवाद — पटेल सीसीटीवी कैमरा वर्ल्ड";
 
   const typingIndexRef = useRef<number>(0);
   const speechCancelRef = useRef<(() => void) | null>(null);
 
+  // Keep selectedLang updated if prop changes initially
+  useEffect(() => {
+    if (language) {
+      setSelectedLang(language);
+    }
+  }, [language]);
+
+  const currentWarning = SECURITY_WARNING_TEXTS[selectedLang] || SECURITY_WARNING_TEXTS.hi;
+
+  // Start speech in selected language
+  const triggerSpeech = (targetLang: Language) => {
+    stopWelcomeAudio();
+    if (speechCancelRef.current) {
+      speechCancelRef.current();
+    }
+    setIsSpeaking(true);
+    speakLoginSecurityWarningAudio(
+      targetLang,
+      () => setIsSpeaking(true),
+      () => setIsSpeaking(false)
+    ).then(cancelFn => {
+      speechCancelRef.current = cancelFn;
+    });
+  };
+
+  // Initial Open sequence
   useEffect(() => {
     if (!isOpen) {
       setPhase('white_screen');
@@ -68,7 +104,7 @@ export const LoginSecurityWarningOverlay: React.FC<LoginSecurityWarningOverlayPr
       return;
     }
 
-    // Step 1: Start with pure white screen for 700ms
+    // Step 1: Start with scanning cctv loader for 650ms
     setPhase('white_screen');
     setDisplayedText('');
     typingIndexRef.current = 0;
@@ -78,22 +114,13 @@ export const LoginSecurityWarningOverlay: React.FC<LoginSecurityWarningOverlayPr
       setPhase('warning_header');
 
       const warningHeaderTimer = setTimeout(() => {
-        // Step 3: Begin typing text and start speaking simultaneously
+        // Step 3: Begin typing text and start speaking simultaneously in sweet female voice
         setPhase('typing_text');
-        setIsSpeaking(true);
-
-        // Trigger voice speech
-        speakLoginSecurityWarningAudio(
-          () => setIsSpeaking(true),
-          () => setIsSpeaking(false)
-        ).then(cancelFn => {
-          speechCancelRef.current = cancelFn;
-        });
-
-      }, 650);
+        triggerSpeech(selectedLang);
+      }, 550);
 
       return () => clearTimeout(warningHeaderTimer);
-    }, 750);
+    }, 650);
 
     return () => {
       clearTimeout(whiteScreenTimer);
@@ -104,11 +131,11 @@ export const LoginSecurityWarningOverlay: React.FC<LoginSecurityWarningOverlayPr
     };
   }, [isOpen]);
 
-  // Gradual typing effect
+  // Gradual typing effect for the active language
   useEffect(() => {
     if (phase !== 'typing_text') return;
 
-    const textToType = fullWarningHindi;
+    const textToType = currentWarning.written;
     typingIndexRef.current = 0;
     setDisplayedText('');
 
@@ -121,28 +148,32 @@ export const LoginSecurityWarningOverlay: React.FC<LoginSecurityWarningOverlayPr
         clearInterval(interval);
         setPhase('complete');
       }
-    }, 22); // Smooth progressive typing speed
+    }, 18); // Smooth progressive typing speed
 
     return () => clearInterval(interval);
-  }, [phase]);
+  }, [phase, selectedLang]);
+
+  // Switch language handler
+  const handleLanguageChange = (newLang: Language) => {
+    if (newLang === selectedLang) {
+      // If already selected, replay voice
+      triggerSpeech(newLang);
+      return;
+    }
+    setSelectedLang(newLang);
+    const newWarning = SECURITY_WARNING_TEXTS[newLang] || SECURITY_WARNING_TEXTS.hi;
+    setDisplayedText(newWarning.written);
+    setPhase('complete');
+    triggerSpeech(newLang);
+  };
 
   const handleSkipAnimation = () => {
-    setDisplayedText(fullWarningHindi);
+    setDisplayedText(currentWarning.written);
     setPhase('complete');
   };
 
   const handleReplayVoice = () => {
-    stopWelcomeAudio();
-    if (speechCancelRef.current) {
-      speechCancelRef.current();
-    }
-    setIsSpeaking(true);
-    speakLoginSecurityWarningAudio(
-      () => setIsSpeaking(true),
-      () => setIsSpeaking(false)
-    ).then(cancelFn => {
-      speechCancelRef.current = cancelFn;
-    });
+    triggerSpeech(selectedLang);
   };
 
   const handleStopVoice = () => {
@@ -176,34 +207,80 @@ export const LoginSecurityWarningOverlay: React.FC<LoginSecurityWarningOverlayPr
         <ShieldAlert className="w-[600px] h-[600px] text-red-600" />
       </div>
 
-      {/* PHASE 1: Pure CCTV camera rotating & scanning loading stage */}
+      {/* PHASE 1: Scanning stage */}
       {phase === 'white_screen' && (
         <div className="w-full max-w-lg p-2 animate-in fade-in duration-200">
           <CCTVLoader
-            language={language}
+            language={selectedLang}
             variant="card"
-            title={isHi ? 'सुरक्षा सत्यापन व चेतावनी लोड हो रही है...' : 'Scanning Security Caution Notice...'}
-            subtitle={isHi ? 'पटेल सीसीटीवी कैमरा सर्विलांस ऑथेंटिकेशन सिस्टम सक्रिय हो रहा है...' : 'Patel CCTV Surveillance Authentication Active'}
+            title="सुरक्षा सत्यापन व चेतावनी लोड हो रही है..."
+            subtitle="Patel CCTV Surveillance Authentication Active"
           />
         </div>
       )}
 
       {/* PHASE 2, 3, 4: Warning Container on Clean White Screen */}
       {phase !== 'white_screen' && (
-        <div className="relative w-full max-w-2xl bg-white rounded-3xl p-5 sm:p-8 sm:shadow-2xl sm:border border-slate-200/80 my-auto text-slate-900 animate-in zoom-in-95 fade-in duration-300">
+        <div className="relative w-full max-w-2xl bg-white rounded-3xl p-4 sm:p-7 sm:shadow-2xl sm:border border-slate-200/80 my-auto text-slate-900 animate-in zoom-in-95 fade-in duration-300">
           
           {/* Top Warning Banner Ribbon */}
-          <div className="flex flex-col items-center text-center space-y-3 pb-4 border-b border-slate-100">
+          <div className="flex flex-col items-center text-center space-y-3 pb-3 border-b border-slate-100">
             <div className="inline-flex items-center gap-2 bg-red-600 text-white font-black text-xs sm:text-sm px-4 py-1.5 rounded-full shadow-lg shadow-red-500/30 uppercase tracking-wider animate-bounce">
               <AlertTriangle className="w-4 h-4 text-amber-300" />
               <span>WARNING / अति महत्वपूर्ण चेतावनी</span>
               <AlertTriangle className="w-4 h-4 text-amber-300" />
             </div>
 
-            <div className="flex items-center justify-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                <ShieldAlert className="w-6 h-6 text-red-600 inline" />
-                <span>सावधानी नोट (Security Caution Alert)</span>
+            {/* Language Selector Bar (हिंदी, English, ગુજરાતી, मराठी, ಕನ್ನಡ, தமிழ்) */}
+            <div className="w-full bg-slate-50 border border-slate-200/80 rounded-2xl p-2.5 sm:p-3 shadow-xs">
+              <div className="flex items-center justify-between gap-2 mb-2 px-1">
+                <span className="text-[11px] sm:text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                  <Languages className="w-3.5 h-3.5 text-blue-600" />
+                  <span>आवाज व भाषा चुनें (Select Audio Voice):</span>
+                </span>
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">
+                  <Sparkles className="w-2.5 h-2.5 text-rose-500" />
+                  <span>लड़की जैसी प्यारी आवाज 🎙️</span>
+                </span>
+              </div>
+
+              {/* Language Pills Grid */}
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+                {LANGUAGE_OPTIONS.map(opt => {
+                  const isSelected = selectedLang === opt.code;
+                  return (
+                    <button
+                      key={opt.code}
+                      type="button"
+                      onClick={() => handleLanguageChange(opt.code)}
+                      className={`relative flex flex-col items-center justify-center py-2 px-1.5 rounded-xl border text-center transition cursor-pointer ${
+                        isSelected
+                          ? 'bg-blue-600 border-blue-700 text-white shadow-md shadow-blue-500/30 scale-[1.03] font-bold'
+                          : 'bg-white hover:bg-blue-50/60 border-slate-200 text-slate-700 hover:text-blue-700 font-medium'
+                      }`}
+                      title={`${opt.label} में आवाज सुनें`}
+                    >
+                      <span className="text-xs font-black leading-tight flex items-center gap-1">
+                        {opt.nativeLabel}
+                      </span>
+                      <span className={`text-[9px] leading-none mt-0.5 ${isSelected ? 'text-blue-100' : 'text-slate-400'}`}>
+                        {opt.label}
+                      </span>
+
+                      {/* Active Speaking Indicator Dot */}
+                      {isSelected && isSpeaking && (
+                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-white animate-ping" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-center gap-2 pt-1">
+              <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                <ShieldAlert className="w-5 h-5 text-red-600 inline" />
+                <span>{currentWarning.title}</span>
               </h1>
             </div>
 
@@ -213,12 +290,14 @@ export const LoginSecurityWarningOverlay: React.FC<LoginSecurityWarningOverlayPr
               </p>
             )}
 
-            {/* Audio Speech Status Live Badge */}
+            {/* Audio Speech Status Live Badge & Controls */}
             <div className="flex items-center gap-2 flex-wrap justify-center pt-1">
               {isSpeaking ? (
                 <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 text-xs font-semibold px-3 py-1 rounded-full border border-emerald-200 animate-pulse">
                   <Volume2 className="w-4 h-4 text-emerald-600 animate-bounce" />
-                  <span>ऑडियो चेतावनी बोल रहा है (Speaking...)</span>
+                  <span>
+                    {LANGUAGE_OPTIONS.find(l => l.code === selectedLang)?.nativeLabel} में आवाज बोल रही है...
+                  </span>
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-1 rounded-full">
@@ -230,7 +309,7 @@ export const LoginSecurityWarningOverlay: React.FC<LoginSecurityWarningOverlayPr
               <button
                 type="button"
                 onClick={isSpeaking ? handleStopVoice : handleReplayVoice}
-                className="inline-flex items-center gap-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs px-3 py-1 rounded-full border border-blue-200 transition cursor-pointer"
+                className="inline-flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs px-3.5 py-1.5 rounded-full border border-blue-200 transition cursor-pointer"
                 title="आवाज दोबारा सुनें या रोकें"
               >
                 {isSpeaking ? (
@@ -241,7 +320,7 @@ export const LoginSecurityWarningOverlay: React.FC<LoginSecurityWarningOverlayPr
                 ) : (
                   <>
                     <Volume2 className="w-3.5 h-3.5 text-blue-600" />
-                    <span>दोबारा सुनें (Replay Voice)</span>
+                    <span>दोबारा आवाज सुनें (Replay)</span>
                   </>
                 )}
               </button>
@@ -259,8 +338,8 @@ export const LoginSecurityWarningOverlay: React.FC<LoginSecurityWarningOverlayPr
           </div>
 
           {/* Progressive Animated Typed Out Text Box */}
-          <div className="my-5 bg-amber-50/70 border-2 border-amber-300/80 rounded-2xl p-4 sm:p-5 relative overflow-hidden shadow-inner">
-            <div className="absolute top-2 right-2 flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-200/70 px-2 py-0.5 rounded-full">
+          <div className="my-4 bg-amber-50/70 border-2 border-amber-300/80 rounded-2xl p-4 sm:p-5 relative overflow-hidden shadow-inner">
+            <div className="absolute top-2.5 right-2.5 flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-full">
               <Radio className="w-3 h-3 text-red-600 animate-pulse" />
               <span>आधिकारिक सुरक्षा सूचना</span>
             </div>
@@ -274,9 +353,9 @@ export const LoginSecurityWarningOverlay: React.FC<LoginSecurityWarningOverlayPr
           </div>
 
           {/* Quick Action Official Numbers Box */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
             {/* WhatsApp Official Verification */}
-            <div className="bg-emerald-50/80 border border-emerald-300 rounded-2xl p-3.5 flex flex-col justify-between">
+            <div className="bg-emerald-50/80 border border-emerald-300 rounded-2xl p-3 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between gap-1 mb-1">
                   <span className="text-[11px] font-bold text-emerald-900 uppercase tracking-wider flex items-center gap-1">
@@ -316,7 +395,7 @@ export const LoginSecurityWarningOverlay: React.FC<LoginSecurityWarningOverlayPr
             </div>
 
             {/* Helpline / Police Report Assistance */}
-            <div className="bg-rose-50/80 border border-rose-300 rounded-2xl p-3.5 flex flex-col justify-between">
+            <div className="bg-rose-50/80 border border-rose-300 rounded-2xl p-3 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between gap-1 mb-1">
                   <span className="text-[11px] font-bold text-rose-900 uppercase tracking-wider flex items-center gap-1">

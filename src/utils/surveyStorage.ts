@@ -1,7 +1,7 @@
 import { SiteVisitBooking, SiteVisitRequest } from '../types';
 
-const STORAGE_KEY = 'prince_cctv_survey_bookings_v1';
-const ACTIVE_CUSTOMER_SURVEY_KEY = 'prince_cctv_active_customer_survey_id';
+const STORAGE_KEY = 'patel_cctv_survey_bookings_v1';
+const ACTIVE_CUSTOMER_SURVEY_KEY = 'patel_cctv_active_customer_survey_id';
 
 // Default initial dummy / sample bookings if empty (so store owner can test approvals immediately)
 const SAMPLE_INITIAL_BOOKINGS: SiteVisitBooking[] = [

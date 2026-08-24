@@ -40,17 +40,21 @@ import { SiteVisitModal } from './components/SiteVisitModal';
 import { FlipkartQuestions } from './components/FlipkartQuestions';
 import { SellerProfileModal } from './components/SellerProfileModal';
 import { CustomerAuthModal } from './components/CustomerAuthModal';
+import { AdminMonitorGateModal } from './components/AdminMonitorGateModal';
 import { AdminSurveyApprovalModal } from './components/AdminSurveyApprovalModal';
 import { SurveyStatusTrackModal } from './components/SurveyStatusTrackModal';
 import { CustomerApprovalNotificationBanner } from './components/CustomerApprovalNotificationBanner';
 import { HelpSupportContainer } from './components/HelpSupportContainer';
 import { HelpSupportModal } from './components/HelpSupportModal';
 import { LoginSecurityWarningOverlay } from './components/LoginSecurityWarningOverlay';
+import { MandatoryUpdateModal } from './components/MandatoryUpdateModal';
+import { DiwaliOfferCountdownModal } from './components/DiwaliOfferCountdownModal';
 import { SplashScreen } from './components/SplashScreen';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { Footer } from './components/Footer';
 import { CCTVLoader } from './components/CCTVLoader';
 import { speakWelcomeAudio } from './utils/speech';
+import { checkAppUpdateRequired, UpdateCheckResult } from './utils/appVersionManager';
 
 export default function App() {
   // State
@@ -64,8 +68,17 @@ export default function App() {
   // Customer User Authentication & Location State
   const [currentUser, setCurrentUser] = useState<CustomerUser | null>(() => {
     try {
-      const saved = localStorage.getItem('prince_cctv_customer_user_v2');
-      return saved ? JSON.parse(saved) : null;
+      const saved = localStorage.getItem('patel_cctv_customer_user_v2') || localStorage.getItem('prince_cctv_customer_user_v2');
+      if (saved) {
+        const parsed = JSON.parse(saved) as CustomerUser;
+        const cleanPhone = (parsed.phone || '').replace(/\D/g, '');
+        const isMaster = cleanPhone === '8000951663' || cleanPhone === '918000951663' || cleanPhone.endsWith('8000951663');
+        return {
+          ...parsed,
+          accountType: isMaster ? 'seller' : 'buyer'
+        };
+      }
+      return null;
     } catch {
       return null;
     }
@@ -73,10 +86,10 @@ export default function App() {
 
   const [isGuestMode, setIsGuestMode] = useState<boolean>(() => {
     try {
-      const savedUser = localStorage.getItem('prince_cctv_customer_user_v2');
+      const savedUser = localStorage.getItem('patel_cctv_customer_user_v2') || localStorage.getItem('prince_cctv_customer_user_v2');
       const parsed = savedUser ? JSON.parse(savedUser) : null;
       if (parsed && parsed.isLoggedIn) return false;
-      const savedGuest = localStorage.getItem('prince_cctv_is_guest_mode');
+      const savedGuest = localStorage.getItem('patel_cctv_is_guest_mode') || localStorage.getItem('prince_cctv_is_guest_mode');
       return savedGuest === 'true';
     } catch {
       return false;
@@ -85,10 +98,10 @@ export default function App() {
 
   const [isCustomerAuthOpen, setIsCustomerAuthOpen] = useState<boolean>(() => {
     try {
-      const saved = localStorage.getItem('prince_cctv_customer_user_v2');
+      const saved = localStorage.getItem('patel_cctv_customer_user_v2') || localStorage.getItem('prince_cctv_customer_user_v2');
       const parsed = saved ? JSON.parse(saved) : null;
       if (parsed && parsed.isLoggedIn) return false;
-      const savedGuest = localStorage.getItem('prince_cctv_is_guest_mode');
+      const savedGuest = localStorage.getItem('patel_cctv_is_guest_mode') || localStorage.getItem('prince_cctv_is_guest_mode');
       return savedGuest !== 'true';
     } catch {
       return true;
@@ -98,7 +111,7 @@ export default function App() {
   // Dynamic Products state with localStorage persistence
   const [products, setProducts] = useState<Product[]>(() => {
     try {
-      const saved = localStorage.getItem('prince_cctv_custom_products_v3');
+      const saved = localStorage.getItem('patel_cctv_custom_products_v3') || localStorage.getItem('prince_cctv_custom_products_v3');
       if (saved) {
         const parsed = JSON.parse(saved);
         return parsed.map((p: Product) => ({
@@ -114,7 +127,7 @@ export default function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('prince_cctv_custom_products_v3', JSON.stringify(products));
+      localStorage.setItem('patel_cctv_custom_products_v3', JSON.stringify(products));
     } catch (err) {
       console.error('Failed to save products to localStorage', err);
     }
@@ -123,17 +136,19 @@ export default function App() {
   // Dynamic Store & Contact Info state with localStorage persistence
   const [storeInfo, setStoreInfo] = useState<StoreInfo>(() => {
     try {
-      const saved = localStorage.getItem('prince_cctv_store_info_v3');
+      const saved = localStorage.getItem('patel_cctv_store_info_v3') || localStorage.getItem('prince_cctv_store_info_v3');
       if (saved) {
         const parsed = JSON.parse(saved);
         const isLegacyAddress = !parsed.address || parsed.address.includes('Shop No. 12') || parsed.address.includes('City Hub');
         return {
           ...STORE_INFO,
           ...parsed,
+          name: STORE_INFO.name, // Always enforce 'Patel CCTV camera'
+          nameHi: STORE_INFO.nameHi, // Always enforce 'पटेल सीसीटीवी कैमरा'
           address: isLegacyAddress ? STORE_INFO.address : parsed.address,
           addressHi: isLegacyAddress ? STORE_INFO.addressHi : (parsed.addressHi || STORE_INFO.addressHi),
-          phone: parsed.phone === '+91 98765 43210' ? '+91 74830 05197' : parsed.phone || '+91 74830 05197',
-          whatsappNumber: parsed.whatsappNumber === '919876543210' ? '917483005197' : parsed.whatsappNumber || '917483005197'
+          phone: (parsed.phone === '+91 98765 43210') ? '+91 80009 51663' : (parsed.phone || '+91 80009 51663'),
+          whatsappNumber: '917483005197'
         };
       }
       return STORE_INFO;
@@ -144,7 +159,7 @@ export default function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('prince_cctv_store_info_v3', JSON.stringify(storeInfo));
+      localStorage.setItem('patel_cctv_store_info_v3', JSON.stringify(storeInfo));
     } catch (err) {
       console.error('Failed to save store info to localStorage', err);
     }
@@ -153,7 +168,7 @@ export default function App() {
   // Cart state with localStorage recovery
   const [cartItems, setCartItems] = useState<CartItem[]>(() => {
     try {
-      const saved = localStorage.getItem('prince_cctv_cart');
+      const saved = localStorage.getItem('patel_cctv_cart') || localStorage.getItem('prince_cctv_cart');
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -162,7 +177,7 @@ export default function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('prince_cctv_cart', JSON.stringify(cartItems));
+      localStorage.setItem('patel_cctv_cart', JSON.stringify(cartItems));
     } catch (err) {
       console.error('Failed to save cart to localStorage', err);
     }
@@ -188,6 +203,35 @@ export default function App() {
 
   // Login Security Warning Overlay (White screen -> Warning -> Progressive Typing -> Voice)
   const [isLoginSecurityWarningOpen, setIsLoginSecurityWarningOpen] = useState<boolean>(false);
+
+  // Grand Diwali 77-Day Countdown Offer Popup (3 Seconds Auto Popup on App Open)
+  const [isDiwaliOfferOpen, setIsDiwaliOfferOpen] = useState<boolean>(() => {
+    try {
+      const expiryDate = new Date('2026-11-16T23:59:59');
+      return new Date().getTime() <= expiryDate.getTime();
+    } catch {
+      return true;
+    }
+  });
+
+  // App Update & Version Mandatory Gate State
+  const [updateStatus, setUpdateStatus] = useState<UpdateCheckResult>(() => checkAppUpdateRequired());
+
+  useEffect(() => {
+    const evaluateUpdate = () => {
+      setUpdateStatus(checkAppUpdateRequired());
+    };
+    evaluateUpdate();
+    window.addEventListener('patel_cctv_version_changed', evaluateUpdate);
+    window.addEventListener('storage', evaluateUpdate);
+    const interval = setInterval(evaluateUpdate, 15000);
+
+    return () => {
+      window.removeEventListener('patel_cctv_version_changed', evaluateUpdate);
+      window.removeEventListener('storage', evaluateUpdate);
+      clearInterval(interval);
+    };
+  }, []);
 
   // Deep-link check for Survey Approval, Survey Tracking, Help Grievance, or Warning Notice from WhatsApp / SMS links
   useEffect(() => {
@@ -254,7 +298,8 @@ export default function App() {
     setCurrentUser(user);
     setIsGuestMode(false);
     try {
-      localStorage.setItem('prince_cctv_customer_user_v2', JSON.stringify(user));
+      localStorage.setItem('patel_cctv_customer_user_v2', JSON.stringify(user));
+      localStorage.removeItem('patel_cctv_is_guest_mode');
       localStorage.removeItem('prince_cctv_is_guest_mode');
     } catch (err) {
       console.error(err);
@@ -268,7 +313,7 @@ export default function App() {
   const handleContinueAsGuest = () => {
     setIsGuestMode(true);
     try {
-      localStorage.setItem('prince_cctv_is_guest_mode', 'true');
+      localStorage.setItem('patel_cctv_is_guest_mode', 'true');
     } catch (err) {
       console.error(err);
     }
@@ -284,7 +329,9 @@ export default function App() {
     setCurrentUser(null);
     setIsGuestMode(false);
     try {
+      localStorage.removeItem('patel_cctv_customer_user_v2');
       localStorage.removeItem('prince_cctv_customer_user_v2');
+      localStorage.removeItem('patel_cctv_is_guest_mode');
       localStorage.removeItem('prince_cctv_is_guest_mode');
     } catch (err) {
       console.error(err);
@@ -293,47 +340,22 @@ export default function App() {
     showToast(isHi ? 'आप लॉगआउट हो गए हैं। नया पिन कोड दर्ज करें।' : 'You have been logged out.');
   };
 
-  const handleSwitchAccountType = (targetType: 'buyer' | 'seller') => {
-    if (!currentUser) return;
-    const updatedUser: CustomerUser = {
-      ...currentUser,
-      accountType: targetType
-    };
-    setCurrentUser(updatedUser);
-    try {
-      localStorage.setItem('prince_cctv_customer_user_v2', JSON.stringify(updatedUser));
-    } catch (err) {
-      console.error(err);
-    }
-    if (targetType === 'seller') {
-      showToast(
-        isHi 
-          ? '🏪 सेलर अकाउंट सक्रिय! आप सामान बेच (Add/Edit) व खरीद दोनों सकते हैं।' 
-          : '🏪 Upgraded to Seller Account! You can now sell and purchase.'
-      );
-      setIsBuyerRestrictionModalOpen(false);
-    } else {
-      showToast(
-        isHi 
-          ? '🛒 खरीदार अकाउंट सक्रिय! (केवल सामान खरीदने की सुविधा)' 
-          : '🛒 Switched to Buyer Account (Buy Only).'
-      );
-    }
-  };
-
   const handleOpenSellerProfile = () => {
     if (!currentUser || !currentUser.isLoggedIn) {
       setIsCustomerAuthOpen(true);
       return;
     }
-    if (currentUser.accountType === 'buyer') {
+    const cleanPhone = (currentUser.phone || '').replace(/\D/g, '');
+    const isMasterMonitor = cleanPhone === '8000951663' || cleanPhone === '918000951663' || cleanPhone.endsWith('8000951663') || cleanPhone === storeInfo.phone.replace(/\D/g, '');
+    
+    if (!isMasterMonitor) {
       setIsBuyerRestrictionModalOpen(true);
       return;
     }
     openWithCCTVLoader(
       () => setIsSellerProfileOpen(true),
-      isHi ? 'पटेल सीसीटीवी स्टोर व सेलर प्रोफाइल लोड हो रहा है...' : 'Opening Patel CCTV Seller Dashboard...',
-      isHi ? 'दुकान का पता व अधिकृत इनवॉइस विवरण' : 'Viewing Authorized Rajkot Store Details'
+      isHi ? 'पटेल सीसीटीवी मुख्य मॉनिटर डैशबोर्ड लोड हो रहा है...' : 'Opening Store Monitor Dashboard...',
+      isHi ? 'दुकान इन्वेंट्री व अधिकृत इनवॉइस विवरण' : 'Viewing Authorized Rajkot Store Details'
     );
   };
 
@@ -427,12 +449,12 @@ export default function App() {
   }, [products, selectedCategory, selectedBrand, searchQuery, sortBy]);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col selection:bg-blue-600 selection:text-white">
+    <div className="min-h-screen bg-slate-100 text-slate-900 flex flex-col selection:bg-blue-600 selection:text-white">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-20 right-4 z-50 bg-slate-900 text-white text-xs sm:text-sm font-bold px-4 py-3 rounded-xl shadow-2xl border border-emerald-500/50 flex items-center gap-2 animate-bounce">
-          <Sparkles className="w-4 h-4 text-emerald-400" />
-          <span>{toastMessage}</span>
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-xs sm:text-sm font-bold px-4 py-3 rounded-2xl shadow-2xl border border-emerald-500/50 flex items-center gap-2.5 animate-bounce max-w-md w-[90%]">
+          <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span className="truncate">{toastMessage}</span>
         </div>
       )}
 
@@ -446,7 +468,6 @@ export default function App() {
         isGuestMode={isUserGuest}
         onOpenCustomerAuth={() => setIsCustomerAuthOpen(true)}
         onLogoutCustomer={handleCustomerLogout}
-        onSwitchAccountType={handleSwitchAccountType}
         onPlayGreeting={speakWelcomeAudio}
         onOpenCart={() => setIsCartOpen(true)}
         onOpenEstimator={() => openWithCCTVLoader(() => setIsEstimatorOpen(true), isHi ? 'कस्टम पैकेज कोटेशन लोड हो रहा है...' : 'Scanning Custom Package Estimator...', isHi ? 'कैमरा व DVR कॉम्बिनेशन तैयार हो रहा है' : 'Synchronizing CCTV & DVR Configuration')}
@@ -512,12 +533,13 @@ export default function App() {
           }, isHi ? 'हेल्प व सपोर्ट पोर्टल लोड हो रहा है...' : 'Loading Support Portal...');
         }}
         onOpenSecurityWarning={() => openWithCCTVLoader(() => setIsLoginSecurityWarningOpen(true), isHi ? 'सुरक्षा सत्यापन व चेतावनी लोड हो रही है...' : 'Scanning Security Caution Notice...')}
+        onOpenDiwaliOffer={() => setIsDiwaliOfferOpen(true)}
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-2.5 sm:px-6 lg:px-8 py-4 sm:py-8 pb-24 md:pb-8 space-y-4 sm:space-y-6">
+      <main className="flex-1 w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 pb-24 md:pb-12 space-y-4 sm:space-y-6">
         {/* Sticky Filter & Search Control Bar */}
-        <div className="bg-white p-3 sm:p-5 rounded-2xl sm:rounded-3xl shadow-xs border border-slate-200/80 space-y-3 sm:space-y-4">
+        <div className="bg-white p-3 rounded-2xl shadow-xs border border-slate-200/80 space-y-2.5">
           {/* Top Search and Sort Row */}
           <div className="flex flex-col md:flex-row items-center justify-between gap-2.5 sm:gap-3">
             {/* Search Input */}
@@ -1011,6 +1033,7 @@ export default function App() {
         isOpen={isCustomerAuthOpen || (!isGuestMode && (!currentUser || !currentUser.isLoggedIn))}
         isMandatoryGate={!isGuestMode && (!currentUser || !currentUser.isLoggedIn)}
         language={language}
+        onLanguageChange={setLanguage}
         storeInfo={storeInfo}
         currentUser={currentUser}
         onLoginSuccess={handleCustomerLoginSuccess}
@@ -1029,6 +1052,35 @@ export default function App() {
         onUpdateStoreInfo={setStoreInfo}
         products={products}
         onUpdateProducts={setProducts}
+      />
+
+      {/* Admin Store Monitor Security Gate Modal */}
+      <AdminMonitorGateModal
+        isOpen={isBuyerRestrictionModalOpen}
+        language={language}
+        storeInfo={storeInfo}
+        currentUser={currentUser}
+        onClose={() => setIsBuyerRestrictionModalOpen(false)}
+        onUnlockSeller={() => {
+          setIsBuyerRestrictionModalOpen(false);
+          if (currentUser) {
+            const adminUser: CustomerUser = {
+              ...currentUser,
+              accountType: 'seller',
+            };
+            setCurrentUser(adminUser);
+            try {
+              localStorage.setItem('patel_cctv_customer_user_v2', JSON.stringify(adminUser));
+            } catch (err) {
+              console.error(err);
+            }
+          }
+          openWithCCTVLoader(
+            () => setIsSellerProfileOpen(true),
+            isHi ? 'मुख्य स्टोर मॉनिटर डैशबोर्ड लोड हो रहा है...' : 'Opening Store Monitor Dashboard...',
+            isHi ? 'इन्वेंट्री, मूल्य व स्टोर मैनेजमेंट एक्टिव' : 'Authorized Monitor Control Active'
+          );
+        }}
       />
 
       {/* Customer Help, Grievance, Warranty & Fraud Alert Resolution Modal */}
@@ -1104,6 +1156,32 @@ export default function App() {
           variant="fullscreen"
           title={cctvLoadingState.title}
           subtitle={cctvLoadingState.subtitle}
+        />
+      )}
+
+      {/* Mandatory App Update & In-Progress Maintenance Lock Screen */}
+      <MandatoryUpdateModal
+        isOpen={updateStatus.needed || updateStatus.isMaintenance}
+        language={language}
+        currentVersion={updateStatus.currentVersion}
+        latestVersion={updateStatus.latestVersion}
+        config={updateStatus.config}
+        isMaintenance={updateStatus.isMaintenance}
+        onUpdateCompleted={() => {
+          setUpdateStatus(checkAppUpdateRequired());
+        }}
+      />
+
+      {/* Grand Diwali 77-Day Mega Offer Countdown Popup (3-Second Auto Dismiss + Sparkler Fountain Animation) */}
+      {!showSplash && isDiwaliOfferOpen && (
+        <DiwaliOfferCountdownModal
+          language={language}
+          onClose={() => setIsDiwaliOfferOpen(false)}
+          onExploreOffer={() => {
+            setIsDiwaliOfferOpen(false);
+            const storeElem = document.getElementById('store') || document.querySelector('main');
+            storeElem?.scrollIntoView({ behavior: 'smooth' });
+          }}
         />
       )}
 

@@ -5,7 +5,7 @@ export const STORE_INFO = {
   nameHi: 'पटेल सीसीटीवी कैमरा',
   tagline: 'Best Security & Surveillance Solutions at Wholesale Rates',
   taglineHi: 'बेहतरीन सुरक्षा, सही दाम पर - अधिकृत डीलर',
-  phone: '+91 74830 05197',
+  phone: '+91 80009 51663',
   whatsappNumber: '917483005197',
   email: 'contact@patelcctv.com',
   address: 'SIROMANI COMPLEX OPPOSITE KARANSINHJI BALAJI HUNUMAN TEMPLE BHUPENDRA ROAD RAJKOT',
